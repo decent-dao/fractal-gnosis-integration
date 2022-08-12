@@ -68,8 +68,8 @@ const config: HardhatUserConfig = {
     hardhat: {
       forking: {
         url: process.env.GOERLI_PROVIDER ? process.env.GOERLI_PROVIDER : "",
-        blockNumber: 7387621
-      }
+        blockNumber: 7387621,
+      },
     },
   },
   etherscan: {

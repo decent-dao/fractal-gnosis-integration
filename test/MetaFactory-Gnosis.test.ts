@@ -66,6 +66,8 @@ describe("MetaFactory", () => {
 
   const abiSafe = [
     "event SafeSetup(address indexed initiator, address[] owners, uint256 threshold, address initializer, address fallbackHandler)",
+    "function isOwner(address owner) public view returns (bool)",
+    "function getThreshold() public view returns (uint256)",
     "function setup(address[] calldata _owners,uint256 _threshold,address to,bytes calldata data,address fallbackHandler,address paymentToken,uint256 payment,address payable paymentReceiver)",
   ];
 
@@ -266,10 +268,23 @@ describe("MetaFactory", () => {
     await expect(tx)
       .to.emit(gnosisFactory, "ProxyCreation")
       .withArgs(gnosisSafe.address, gnosisSingletonAddress);
+  });
 
+  it("Gnosis Safe is setup", async () => {
     await expect(tx)
       .to.emit(gnosisSafe, "SafeSetup")
-      // .withArgs(gnosisSafe.address, gnosisSingletonAddress);
+      .withArgs(
+        metaFactory.address,
+        [owner1.address, owner2.address, owner3.address],
+        2,
+        ethers.constants.AddressZero,
+        ethers.constants.AddressZero
+      );
+
+    expect(await gnosisSafe.isOwner(owner1.address)).eq(true);
+    expect(await gnosisSafe.isOwner(owner2.address)).eq(true);
+    expect(await gnosisSafe.isOwner(owner3.address)).eq(true);
+    expect(await gnosisSafe.getThreshold()).eq(2);
   });
 
   it("Setup the correct roles", async () => {

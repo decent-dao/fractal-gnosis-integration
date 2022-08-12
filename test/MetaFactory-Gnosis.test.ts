@@ -149,11 +149,28 @@ describe("MetaFactory", () => {
       )
     );
 
+    const createGnosisSetupCalldata = ifaceSafe.encodeFunctionData("setup", [
+      [owner1.address, owner2.address, owner3.address],
+      threshold,
+      ethers.constants.AddressZero,
+      ethers.constants.HashZero,
+      ethers.constants.AddressZero,
+      ethers.constants.AddressZero,
+      0,
+      ethers.constants.AddressZero,
+    ]);
+
     const predictedGnosisSafeAddress = ethers.utils.getCreate2Address(
       gnosisFactory.address,
       ethers.utils.solidityKeccak256(
         ["bytes", "uint256"],
-        [ethers.utils.solidityKeccak256(["bytes"], [initializer]), saltNum]
+        [
+          ethers.utils.solidityKeccak256(
+            ["bytes"],
+            [createGnosisSetupCalldata]
+          ),
+          saltNum,
+        ]
       ),
       ethers.utils.solidityKeccak256(
         ["bytes", "uint256"],
@@ -196,19 +213,8 @@ describe("MetaFactory", () => {
 
     const createGnosisSafeCalldata = iface.encodeFunctionData(
       "createProxyWithNonce",
-      [gnosisSingletonAddress, initializer, saltNum]
+      [gnosisSingletonAddress, createGnosisSetupCalldata, saltNum]
     );
-
-    const createGnosisSetupCalldata = ifaceSafe.encodeFunctionData("setup", [
-      [owner1.address, owner2.address, owner3.address],
-      threshold,
-      ethers.constants.AddressZero,
-      ethers.constants.HashZero,
-      ethers.constants.AddressZero,
-      ethers.constants.AddressZero,
-      0,
-      ethers.constants.AddressZero,
-    ]);
 
     const innerAddActionsRolesCalldata =
       accessControl.interface.encodeFunctionData("daoAddActionsRoles", [
@@ -233,16 +239,10 @@ describe("MetaFactory", () => {
       createDAOParams,
       [],
       [],
-      [
-        gnosisFactory.address,
-        gnosisSafe.address,
-        dao.address,
-        accessControl.address,
-      ],
-      [0, 0, 0, 0],
+      [gnosisFactory.address, dao.address, accessControl.address],
+      [0, 0, 0],
       [
         createGnosisSafeCalldata,
-        createGnosisSetupCalldata,
         outerAddActionsRolesCalldata,
         revokeMetafactoryRoleCalldata,
       ],
@@ -274,7 +274,7 @@ describe("MetaFactory", () => {
     await expect(tx)
       .to.emit(gnosisSafe, "SafeSetup")
       .withArgs(
-        metaFactory.address,
+        gnosisFactory.address,
         [owner1.address, owner2.address, owner3.address],
         2,
         ethers.constants.AddressZero,

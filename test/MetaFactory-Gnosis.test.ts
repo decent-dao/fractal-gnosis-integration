@@ -252,6 +252,68 @@ describe("MetaFactory", () => {
     );
   });
 
+  it("Deploys a native gnosis safe", async () => {
+    const createGnosisSetupCalldata = ifaceSafe.encodeFunctionData("setup", [
+      [owner1.address, owner2.address],
+      threshold,
+      ethers.constants.AddressZero,
+      ethers.constants.HashZero,
+      ethers.constants.AddressZero,
+      ethers.constants.AddressZero,
+      0,
+      ethers.constants.AddressZero,
+    ]);
+
+    const predictedGnosisSafeAddress = ethers.utils.getCreate2Address(
+      gnosisFactory.address,
+      ethers.utils.solidityKeccak256(
+        ["bytes", "uint256"],
+        [
+          ethers.utils.solidityKeccak256(
+            ["bytes"],
+            [createGnosisSetupCalldata]
+          ),
+          saltNum,
+        ]
+      ),
+      ethers.utils.solidityKeccak256(
+        ["bytes", "uint256"],
+        [
+          // eslint-disable-next-line camelcase
+          await gnosisFactory.proxyCreationCode(),
+          gnosisSingletonAddress,
+        ]
+      )
+    );
+
+    gnosisSafe = new ethers.Contract(
+      predictedGnosisSafeAddress,
+      abiSafe,
+      deployer
+    );
+
+    await expect(
+      gnosisFactory.createProxyWithNonce(
+        gnosisSingletonAddress,
+        createGnosisSetupCalldata,
+        saltNum
+      )
+    )
+      .to.emit(gnosisSafe, "SafeSetup")
+      .withArgs(
+        gnosisFactory.address,
+        [owner1.address, owner2.address],
+        2,
+        ethers.constants.AddressZero,
+        ethers.constants.AddressZero
+      );
+
+    expect(await gnosisSafe.isOwner(owner1.address)).eq(true);
+    expect(await gnosisSafe.isOwner(owner2.address)).eq(true);
+    expect(await gnosisSafe.isOwner(owner3.address)).eq(false);
+    expect(await gnosisSafe.getThreshold()).eq(2);
+  });
+
   it("Emitted events with expected deployed contract addresses", async () => {
     await expect(tx)
       .to.emit(metaFactory, "DAOCreated")

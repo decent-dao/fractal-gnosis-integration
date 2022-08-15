@@ -15,6 +15,17 @@ import {
   ERC1967Proxy__factory,
 } from "../typechain-types";
 
+import {
+  safeApproveHash,
+  buildSignatureBytes,
+  executeContractCallWithSigners,
+  buildSafeTransaction,
+  executeTx,
+  calculateSafeTransactionHash,
+  buildContractCall,
+  safeSignTypedData,
+} from "./helpers";
+
 describe("Gnosis Integration", () => {
   // Factories
   let daoFactory: DAOFactory;
@@ -90,10 +101,15 @@ describe("Gnosis Integration", () => {
   ];
 
   const abiSafe = [
+    "event ExecutionSuccess(bytes32 txHash, uint256 payment)",
     "event SafeSetup(address indexed initiator, address[] owners, uint256 threshold, address initializer, address fallbackHandler)",
+    "function getOwners() public view returns (address[] memory)",
+    "function nonce() public view returns (uint256)",
     "function isOwner(address owner) public view returns (bool)",
     "function getThreshold() public view returns (uint256)",
     "function setup(address[] calldata _owners,uint256 _threshold,address to,bytes calldata data,address fallbackHandler,address paymentToken,uint256 payment,address payable paymentReceiver)",
+    "function execTransaction(address to,uint256 value,bytes calldata data,uint8 operation,uint256 safeTxGas,uint256 baseGas,uint256 gasPrice,address gasToken,address payable refundReceiver,bytes memory signatures) public payable returns (bool success)",
+    "function getTransactionHash(address to,uint256 value,bytes calldata data,uint8 operation,uint256 safeTxGas,uint256 baseGas,uint256 gasPrice,address gasToken,address refundReceiver,uint256 _nonce) public view returns (bytes32)",
   ];
 
   beforeEach(async () => {
@@ -159,7 +175,7 @@ describe("Gnosis Integration", () => {
         .withArgs(
           gnosisFactory.address,
           [owner1.address, owner2.address],
-          2,
+          threshold,
           ethers.constants.AddressZero,
           ethers.constants.AddressZero
         );
@@ -169,27 +185,79 @@ describe("Gnosis Integration", () => {
       expect(await gnosisSafe.isOwner(owner3.address)).eq(true);
       expect(await gnosisSafe.getThreshold()).eq(2);
     });
+
+    it("Owners may sign/execute a transaction", async () => {
+      await gnosisFactory.createProxyWithNonce(
+        gnosisSingletonAddress,
+        createGnosisSetupCalldata,
+        saltNum
+      );
+
+      const ifaceToken = new Interface([
+        "function approve(address spender, uint256 amount) public returns (bool)",
+      ]);
+
+      const abiToken = [
+        "event Transfer(address indexed from, address indexed to, uint256 value)",
+        "function allowance(address owner, address spender) public view returns (uint256)",
+        "function approve(address spender, uint256 amount) public returns (bool)",
+      ];
+
+      const approveSpenderData = ifaceToken.encodeFunctionData("approve", [
+        deployer.address,
+        ethers.utils.parseEther("1"),
+      ]);
+
+      const tokenContract = new ethers.Contract(
+        "0x45442cb17bd3e3c0aeae92bf425473e582d5e740",
+        abiToken,
+        deployer
+      );
+
+      const tx = buildSafeTransaction({
+        to: "0x45442cb17bd3e3c0aeae92bf425473e582d5e740",
+        data: approveSpenderData,
+        safeTxGas: 1000000,
+        nonce: await gnosisSafe.nonce(),
+      });
+      const sigs = [
+        await safeSignTypedData(owner1, gnosisSafe, tx),
+        await safeSignTypedData(owner2, gnosisSafe, tx),
+      ];
+      const signatureBytes = buildSignatureBytes(sigs);
+
+      expect(
+        await tokenContract.allowance(gnosisSafe.address, deployer.address)
+      ).eq(0);
+
+      await expect(
+        gnosisSafe.execTransaction(
+          tx.to,
+          tx.value,
+          tx.data,
+          tx.operation,
+          tx.safeTxGas,
+          tx.baseGas,
+          tx.gasPrice,
+          tx.gasToken,
+          tx.refundReceiver,
+          signatureBytes
+        )
+      ).to.emit(gnosisSafe, "ExecutionSuccess");
+
+      expect(
+        await tokenContract.allowance(gnosisSafe.address, deployer.address)
+      ).eq(ethers.utils.parseEther("1"));
+    });
+
+    // todo - do the same for root dao and sub dao
+    // todo - add permissions
   });
 
   describe("Metafactory - Root DAO", () => {
     beforeEach(async () => {
-      await network.provider.request({
-        method: "hardhat_reset",
-        params: [
-          {
-            forking: {
-              jsonRpcUrl: process.env.GOERLI_PROVIDER
-                ? process.env.GOERLI_PROVIDER
-                : "",
-              blockNumber: 7387621,
-            },
-          },
-        ],
-      });
       const abiCoder = new ethers.utils.AbiCoder();
       const { chainId } = await ethers.provider.getNetwork();
-
-      [deployer, owner1, owner2, owner3] = await ethers.getSigners();
 
       // Get deployed MetaFactory contract
       metaFactory = await new MetaFactory__factory(deployer).deploy();
@@ -307,24 +375,6 @@ describe("Gnosis Integration", () => {
       );
     });
 
-    it("Emitted events with expected deployed contract addresses", async () => {
-      await expect(tx)
-        .to.emit(metaFactory, "DAOCreated")
-        .withArgs(dao.address, accessControl.address, deployer.address);
-
-      await expect(tx)
-        .to.emit(daoFactory, "DAOCreated")
-        .withArgs(
-          dao.address,
-          accessControl.address,
-          metaFactory.address,
-          deployer.address
-        );
-      await expect(tx)
-        .to.emit(gnosisFactory, "ProxyCreation")
-        .withArgs(gnosisSafe.address, gnosisSingletonAddress);
-    });
-
     it("Gnosis Safe is setup", async () => {
       await expect(tx)
         .to.emit(gnosisSafe, "SafeSetup")
@@ -342,38 +392,62 @@ describe("Gnosis Integration", () => {
       expect(await gnosisSafe.getThreshold()).eq(2);
     });
 
-    it("Setup the correct roles", async () => {
-      expect(await accessControl.hasRole("DAO_ROLE", dao.address)).to.eq(true);
+    it("Owners may sign/execute a transaction", async () => {
+      const ifaceToken = new Interface([
+        "function approve(address spender, uint256 amount) public returns (bool)",
+      ]);
 
-      expect(
-        await accessControl.hasRole("DAO_ROLE", metaFactory.address)
-      ).to.eq(false);
+      const abiToken = [
+        "event Transfer(address indexed from, address indexed to, uint256 value)",
+        "function allowance(address owner, address spender) public view returns (uint256)",
+        "function approve(address spender, uint256 amount) public returns (bool)",
+      ];
 
-      expect(
-        await accessControl.hasRole("EXECUTE_ROLE", metaFactory.address)
-      ).to.eq(false);
+      const approveSpenderData = ifaceToken.encodeFunctionData("approve", [
+        deployer.address,
+        ethers.utils.parseEther("1"),
+      ]);
 
-      expect(await accessControl.hasRole("UPGRADE_ROLE", dao.address)).to.eq(
-        true
+      const tokenContract = new ethers.Contract(
+        "0x45442cb17bd3e3c0aeae92bf425473e582d5e740",
+        abiToken,
+        deployer
       );
-    });
 
-    it("Sets up the correct DAO role authorization", async () => {
-      expect(
-        await accessControl.isRoleAuthorized(
-          "EXECUTE_ROLE",
-          dao.address,
-          "execute(address[],uint256[],bytes[])"
-        )
-      ).to.eq(true);
+      const tx = buildSafeTransaction({
+        to: "0x45442cb17bd3e3c0aeae92bf425473e582d5e740",
+        data: approveSpenderData,
+        safeTxGas: 1000000,
+        nonce: await gnosisSafe.nonce(),
+      });
+      const sigs = [
+        await safeSignTypedData(owner1, gnosisSafe, tx),
+        await safeSignTypedData(owner2, gnosisSafe, tx),
+      ];
+      const signatureBytes = buildSignatureBytes(sigs);
 
       expect(
-        await accessControl.isRoleAuthorized(
-          "UPGRADE_ROLE",
-          dao.address,
-          "upgradeTo(address)"
+        await tokenContract.allowance(gnosisSafe.address, deployer.address)
+      ).eq(0);
+
+      await expect(
+        gnosisSafe.execTransaction(
+          tx.to,
+          tx.value,
+          tx.data,
+          tx.operation,
+          tx.safeTxGas,
+          tx.baseGas,
+          tx.gasPrice,
+          tx.gasToken,
+          tx.refundReceiver,
+          signatureBytes
         )
-      ).to.eq(true);
+      ).to.emit(gnosisSafe, "ExecutionSuccess");
+
+      expect(
+        await tokenContract.allowance(gnosisSafe.address, deployer.address)
+      ).eq(ethers.utils.parseEther("1"));
     });
   });
 });

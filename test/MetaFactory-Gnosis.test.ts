@@ -13,7 +13,14 @@ import {
   MetaFactory,
   MetaFactory__factory,
   ERC1967Proxy__factory,
+  GnosisWrapperFactory,
+  GnosisWrapper,
+  GnosisWrapper__factory,
+  GnosisWrapperFactory__factory,
+  IGnosisWrapper,
+  IGnosisWrapper__factory,
 } from "../typechain-types";
+import getInterfaceSelector from "./getInterfaceSelector";
 
 import {
   safeApproveHash,
@@ -35,15 +42,18 @@ describe("Gnosis Integration", () => {
   let daoFactory: DAOFactory;
   let metaFactory: MetaFactory;
   let gnosisFactory: Contract;
+  let gnosisWrapperFactory: GnosisWrapperFactory;
 
   // Impl
   let accessControlImpl: DAOAccessControl;
   let daoImpl: DAO;
+  let gnosisWrapperImpl: GnosisWrapper;
 
   // Deployed contracts
   let accessControl: DAOAccessControl;
   let dao: DAO;
   let gnosisSafe: Contract;
+  let gnosisWrapper: GnosisWrapper;
 
   // Wallets
   let deployer: SignerWithAddress;
@@ -224,9 +234,6 @@ describe("Gnosis Integration", () => {
         await tokenContract.allowance(gnosisSafe.address, deployer.address)
       ).eq(ethers.utils.parseEther("1"));
     });
-
-    // todo - do the same for root dao and sub dao
-    // todo - add permissions
   });
 
   describe("Metafactory - Root DAO", () => {
@@ -239,12 +246,17 @@ describe("Gnosis Integration", () => {
 
       // Get deployed factory contracts
       daoFactory = await new DAOFactory__factory(deployer).deploy();
+      gnosisWrapperFactory = await new GnosisWrapperFactory__factory(
+        deployer
+      ).deploy();
+      await gnosisWrapperFactory.initialize();
 
       // Get deployed implementation contracts
       daoImpl = await new DAO__factory(deployer).deploy();
       accessControlImpl = await new DAOAccessControl__factory(
         deployer
       ).deploy();
+      gnosisWrapperImpl = await new GnosisWrapper__factory(deployer).deploy();
 
       const predictedDAOAddress = ethers.utils.getCreate2Address(
         daoFactory.address,
@@ -291,12 +303,40 @@ describe("Gnosis Integration", () => {
         )
       );
 
+      const predictedGnosisWrapperAddress = ethers.utils.getCreate2Address(
+        gnosisWrapperFactory.address,
+        ethers.utils.solidityKeccak256(
+          ["address", "address", "uint256", "bytes32"],
+          [
+            deployer.address,
+            metaFactory.address,
+            chainId,
+            ethers.utils.formatBytes32String("wrapperSalt"),
+          ]
+        ),
+        ethers.utils.solidityKeccak256(
+          ["bytes", "bytes"],
+          [
+            // eslint-disable-next-line camelcase
+            ERC1967Proxy__factory.bytecode,
+            abiCoder.encode(
+              ["address", "bytes"],
+              [gnosisWrapperImpl.address, []]
+            ),
+          ]
+        )
+      );
+
       accessControl = await ethers.getContractAt(
         "DAOAccessControl",
         predictedAccessControlAddress
       );
 
       dao = await ethers.getContractAt("DAO", predictedDAOAddress);
+      gnosisWrapper = await ethers.getContractAt(
+        "GnosisWrapper",
+        predictedGnosisWrapperAddress
+      );
 
       const createDAOParams = {
         daoImplementation: daoImpl.address,
@@ -313,6 +353,16 @@ describe("Gnosis Integration", () => {
         ],
         daoActionRoles: [["EXECUTE_ROLE"], ["UPGRADE_ROLE"]],
       };
+
+      const wrapperFactoryData = [
+        abiCoder.encode(["address"], [predictedAccessControlAddress]),
+        abiCoder.encode(["address"], [gnosisSafe.address]),
+        abiCoder.encode(["address"], [gnosisWrapperImpl.address]),
+        abiCoder.encode(
+          ["bytes32"],
+          [ethers.utils.formatBytes32String("wrapperSalt")]
+        ),
+      ];
 
       const innerAddActionsRolesCalldata =
         accessControl.interface.encodeFunctionData("daoAddActionsRoles", [
@@ -335,8 +385,8 @@ describe("Gnosis Integration", () => {
       tx = await metaFactory.createDAOAndExecute(
         daoFactory.address,
         createDAOParams,
-        [],
-        [],
+        [gnosisWrapperFactory.address],
+        [wrapperFactoryData],
         [gnosisFactory.address, dao.address, accessControl.address],
         [0, 0, 0],
         [
@@ -365,6 +415,25 @@ describe("Gnosis Integration", () => {
       expect(await gnosisSafe.isOwner(owner2.address)).eq(true);
       expect(await gnosisSafe.isOwner(owner3.address)).eq(true);
       expect(await gnosisSafe.getThreshold()).eq(2);
+    });
+
+    it("Gnosis Wrapper Setup", async () => {
+      await expect(tx)
+        .to.emit(gnosisWrapperFactory, "GnosisWrapperCreated")
+        .withArgs(gnosisWrapper.address);
+
+      expect(await gnosisWrapper.accessControl()).eq(accessControl.address);
+      expect(await gnosisWrapper.gnosisSafe()).eq(gnosisSafe.address);
+    });
+
+    it("Supports the expected ERC165 interface", async () => {
+      // Supports Module Factory interface
+      expect(
+        await gnosisWrapper.supportsInterface(
+          // eslint-disable-next-line camelcase
+          getInterfaceSelector(IGnosisWrapper__factory.createInterface())
+        )
+      ).to.eq(true);
     });
 
     it("Owners may sign/execute a transaction", async () => {

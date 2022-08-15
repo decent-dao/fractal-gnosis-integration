@@ -24,6 +24,10 @@ import {
   calculateSafeTransactionHash,
   buildContractCall,
   safeSignTypedData,
+  ifaceSafe,
+  abi,
+  abiSafe,
+  iface,
 } from "./helpers";
 
 describe("Gnosis Integration", () => {
@@ -82,35 +86,6 @@ describe("Gnosis Integration", () => {
   const saltNum = BigNumber.from(
     "0x856d90216588f9ffc124d1480a440e1c012c7a816952bc968d737bae5d4e139c"
   );
-  const iface = new Interface([
-    "function createProxyWithNonce(address _singleton, bytes memory initializer, uint256 saltNonce) returns (GnosisSafeProxy proxy)",
-  ]);
-
-  const ifaceSafe = new Interface([
-    "function setup(address[] calldata _owners,uint256 _threshold,address to,bytes calldata data,address fallbackHandler,address paymentToken,uint256 payment,address payable paymentReceiver)",
-  ]);
-
-  const abi = [
-    "event ProxyCreation(address proxy, address singleton)",
-    "function createProxy(address singleton, bytes memory data) public returns (address proxy)",
-    "function proxyRuntimeCode() public pure returns (bytes memory)",
-    "function proxyCreationCode() public pure returns (bytes memory)",
-    "function createProxyWithNonce(address _singleton,bytes memory initializer,uint256 saltNonce) returns (address proxy)",
-    "function createProxyWithCallback(address _singleton,bytes memory initializer,uint256 saltNonce,IProxyCreationCallback callback) public returns (GnosisSafeProxy proxy)",
-    "function calculateCreateProxyWithNonceAddress(address _singleton,bytes calldata initializer,uint256 saltNonce) external returns (address proxy)",
-  ];
-
-  const abiSafe = [
-    "event ExecutionSuccess(bytes32 txHash, uint256 payment)",
-    "event SafeSetup(address indexed initiator, address[] owners, uint256 threshold, address initializer, address fallbackHandler)",
-    "function getOwners() public view returns (address[] memory)",
-    "function nonce() public view returns (uint256)",
-    "function isOwner(address owner) public view returns (bool)",
-    "function getThreshold() public view returns (uint256)",
-    "function setup(address[] calldata _owners,uint256 _threshold,address to,bytes calldata data,address fallbackHandler,address paymentToken,uint256 payment,address payable paymentReceiver)",
-    "function execTransaction(address to,uint256 value,bytes calldata data,uint8 operation,uint256 safeTxGas,uint256 baseGas,uint256 gasPrice,address gasToken,address payable refundReceiver,bytes memory signatures) public payable returns (bool success)",
-    "function getTransactionHash(address to,uint256 value,bytes calldata data,uint8 operation,uint256 safeTxGas,uint256 baseGas,uint256 gasPrice,address gasToken,address refundReceiver,uint256 _nonce) public view returns (bytes32)",
-  ];
 
   beforeEach(async () => {
     await network.provider.request({

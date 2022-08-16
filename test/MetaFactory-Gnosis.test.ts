@@ -17,19 +17,13 @@ import {
   GnosisWrapper,
   GnosisWrapper__factory,
   GnosisWrapperFactory__factory,
-  IGnosisWrapper,
   IGnosisWrapper__factory,
 } from "../typechain-types";
 import getInterfaceSelector from "./getInterfaceSelector";
 
 import {
-  safeApproveHash,
   buildSignatureBytes,
-  executeContractCallWithSigners,
   buildSafeTransaction,
-  executeTx,
-  calculateSafeTransactionHash,
-  buildContractCall,
   safeSignTypedData,
   ifaceSafe,
   abi,

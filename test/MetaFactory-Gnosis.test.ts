@@ -168,6 +168,7 @@ describe("Gnosis Integration", () => {
       expect(await gnosisSafe.isOwner(owner1.address)).eq(true);
       expect(await gnosisSafe.isOwner(owner2.address)).eq(true);
       expect(await gnosisSafe.isOwner(owner3.address)).eq(true);
+      expect(await gnosisSafe.isOwner(deployer.address)).eq(false);
       expect(await gnosisSafe.getThreshold()).eq(2);
     });
 
@@ -414,6 +415,7 @@ describe("Gnosis Integration", () => {
       expect(await gnosisSafe.isOwner(owner1.address)).eq(true);
       expect(await gnosisSafe.isOwner(owner2.address)).eq(true);
       expect(await gnosisSafe.isOwner(owner3.address)).eq(true);
+      expect(await gnosisSafe.isOwner(deployer.address)).eq(false);
       expect(await gnosisSafe.getThreshold()).eq(2);
     });
 

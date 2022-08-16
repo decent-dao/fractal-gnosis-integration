@@ -53,7 +53,10 @@ contract GnosisWrapperFactory is ModuleFactoryBase {
                 abi.encode(address(abi.decode(data[2], (address))), "") // impl address
             )
         );
-        GnosisWrapper(gnosisWrapper).initialize(abi.decode(data[0], (address)), abi.decode(data[1], (address))); // access Control, gnosisSafe
 
+        GnosisWrapper(gnosisWrapper).initialize(
+            abi.decode(data[0], (address)),
+            abi.decode(data[1], (address))
+        ); // access Control, gnosisSafe
     }
 }

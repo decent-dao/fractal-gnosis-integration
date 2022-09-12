@@ -41,7 +41,7 @@ contract VetoGuard is FactoryFriendly, BaseGuard {
 
     /// @dev Initialize function, will be triggered when a new proxy is deployed
     /// @param initializeParams Parameters of initialization encoded
-    function setUp(bytes memory initializeParams) public override {
+    function setUp(bytes memory initializeParams) public override initializer {
         __Ownable_init();
         (address _owner, uint256 _executionDelayBlocks) = abi.decode(
             initializeParams,

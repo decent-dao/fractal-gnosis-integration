@@ -198,9 +198,7 @@ describe.only("Gnosis Safe Veto Guard", () => {
         tx.baseGas,
         tx.gasPrice,
         tx.gasToken,
-        tx.refundReceiver,
-        signatureBytes,
-        deployer.address
+        tx.refundReceiver
       );
 
       // Mine blocks to surpass the execution delay
@@ -288,9 +286,7 @@ describe.only("Gnosis Safe Veto Guard", () => {
       tx.baseGas,
       tx.gasPrice,
       tx.gasToken,
-      tx.refundReceiver,
-      signatureBytes,
-      deployer.address
+      tx.refundReceiver
     );
 
     await expect(

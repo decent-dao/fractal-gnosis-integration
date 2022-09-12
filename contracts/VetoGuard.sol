@@ -49,6 +49,7 @@ contract VetoGuard is FactoryFriendly, BaseGuard {
         );
 
         transferOwnership(_owner);
+        executionDelayBlocks = _executionDelayBlocks;
 
         emit VetoGuardSetup(msg.sender, _owner);
     }

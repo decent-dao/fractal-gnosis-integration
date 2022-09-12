@@ -18,6 +18,8 @@ import {
   GnosisWrapper__factory,
   GnosisWrapperFactory__factory,
   IGnosisWrapper__factory,
+  Token,
+  Token__factory,
   VetoGuard,
   VetoGuard__factory,
   GnosisSafe,
@@ -52,6 +54,7 @@ describe.only("Gnosis Safe Veto Guard", () => {
   let gnosisSafe: Contract;
   let gnosisWrapper: GnosisWrapper;
   let vetoGuard: VetoGuard;
+  let token: Token;
 
   // Wallets
   let deployer: SignerWithAddress;
@@ -145,21 +148,25 @@ describe.only("Gnosis Safe Veto Guard", () => {
       gnosisSingletonAddress
     );
 
-    gnosisSafe = await ethers.getContractAt(
-      "GnosisSafe",
-      predictedGnosisSafeAddress
-    );
-
-    // createGnosisSafeCalldata = iface.encodeFunctionData(
-    //   "createProxyWithNonce",
-    //   [gnosisSingletonAddress, createGnosisSetupCalldata, saltNum]
-    // );
-
     // Deploy Gnosis Safe
     await gnosisFactory.createProxyWithNonce(
       gnosisSingletonAddress,
       createGnosisSetupCalldata,
       saltNum
+    );
+
+    // Get Gnosis Safe contract
+    gnosisSafe = await ethers.getContractAt(
+      "GnosisSafe",
+      predictedGnosisSafeAddress
+    );
+
+    // Deploy token, give supply to Gnosis Safe
+    token = await new Token__factory(deployer).deploy(
+      "DCNT",
+      "DCNT",
+      predictedGnosisSafeAddress,
+      1000
     );
 
     // Deploy veto guard contract with a 10 block delay between queuing and execution
@@ -169,85 +176,75 @@ describe.only("Gnosis Safe Veto Guard", () => {
     );
 
     // Create transaction to set the guard address
-    // const setGuardData = gnosisSafe.interface.encodeFunctionData("setGuard", [
-    //   vetoGuard.address,
-    // ]);
+    const setGuardData = gnosisSafe.interface.encodeFunctionData("setGuard", [
+      vetoGuard.address,
+    ]);
 
-    // const tx = buildSafeTransaction({
-    //   to: gnosisSafe.address,
-    //   data: setGuardData,
-    //   safeTxGas: 1000000,
-    //   nonce: await gnosisSafe.nonce(),
-    // });
-    // const sigs = [
-    //   await safeSignTypedData(owner1, gnosisSafe, tx),
-    //   await safeSignTypedData(owner2, gnosisSafe, tx),
-    // ];
-    // const signatureBytes = buildSignatureBytes(sigs);
+    const tx = buildSafeTransaction({
+      to: gnosisSafe.address,
+      data: setGuardData,
+      safeTxGas: 1000000,
+      nonce: await gnosisSafe.nonce(),
+    });
+    const sigs = [
+      await safeSignTypedData(owner1, gnosisSafe, tx),
+      await safeSignTypedData(owner2, gnosisSafe, tx),
+    ];
+    const signatureBytes = buildSignatureBytes(sigs);
 
-    // await expect(
-    //   gnosisSafe.execTransaction(
-    //     tx.to,
-    //     tx.value,
-    //     tx.data,
-    //     tx.operation,
-    //     tx.safeTxGas,
-    //     tx.baseGas,
-    //     tx.gasPrice,
-    //     tx.gasToken,
-    //     tx.refundReceiver,
-    //     signatureBytes
-    //   )
-    // ).to.emit(gnosisSafe, "ExecutionSuccess");
+    await expect(
+      gnosisSafe.execTransaction(
+        tx.to,
+        tx.value,
+        tx.data,
+        tx.operation,
+        tx.safeTxGas,
+        tx.baseGas,
+        tx.gasPrice,
+        tx.gasToken,
+        tx.refundReceiver,
+        signatureBytes
+      )
+    ).to.emit(gnosisSafe, "ExecutionSuccess");
 
-    // separate
-
-    // const approveSpenderData = ifaceToken.encodeFunctionData("approve", [
-    //   deployer.address,
-    //   ethers.utils.parseEther("1"),
-    // ]);
-
-    // const tokenContract = new ethers.Contract(
-    //   "0x45442cb17bd3e3c0aeae92bf425473e582d5e740",
-    //   abiToken,
-    //   deployer
-    // );
-
-    // const tx = buildSafeTransaction({
-    //   to: "0x45442cb17bd3e3c0aeae92bf425473e582d5e740",
-    //   data: approveSpenderData,
-    //   safeTxGas: 1000000,
-    //   nonce: await gnosisSafe.nonce(),
-    // });
-    // const sigs = [
-    //   await safeSignTypedData(owner1, gnosisSafe, tx),
-    //   await safeSignTypedData(owner2, gnosisSafe, tx),
-    // ];
-    // const signatureBytes = buildSignatureBytes(sigs);
-
-    // expect(
-    //   await tokenContract.allowance(gnosisSafe.address, deployer.address)
-    // ).eq(0);
-
-    // await expect(
-    //   gnosisSafe.execTransaction(
-    //     tx.to,
-    //     tx.value,
-    //     tx.data,
-    //     tx.operation,
-    //     tx.safeTxGas,
-    //     tx.baseGas,
-    //     tx.gasPrice,
-    //     tx.gasToken,
-    //     tx.refundReceiver,
-    //     signatureBytes
-    //   )
-    // ).to.emit(gnosisSafe, "ExecutionSuccess");
+    // Gnosis Safe received the 1,000 tokens
+    expect(await token.balanceOf(gnosisSafe.address)).to.eq(1000);
   });
 
-  describe("Native Gnosis Safe with VetoGuard added", () => {
-    it("Owners may sign/execute a transaction", async () => {
-      // expect(await gnosisSafe.getGuard()).eq(vetoGuard.address);
+  describe("Native Gnosis Safe with VetoGuard", () => {
+    it("A transaction cannot be executed if it hasn't yet been queued", async () => {
+      // Create transaction to set the guard address
+      const tokenTransferData = token.interface.encodeFunctionData("transfer", [
+        deployer.address,
+        1000,
+      ]);
+
+      const tx = buildSafeTransaction({
+        to: gnosisSafe.address,
+        data: tokenTransferData,
+        safeTxGas: 1000000,
+        nonce: await gnosisSafe.nonce(),
+      });
+      const sigs = [
+        await safeSignTypedData(owner1, gnosisSafe, tx),
+        await safeSignTypedData(owner2, gnosisSafe, tx),
+      ];
+      const signatureBytes = buildSignatureBytes(sigs);
+
+      await expect(
+        gnosisSafe.execTransaction(
+          tx.to,
+          tx.value,
+          tx.data,
+          tx.operation,
+          tx.safeTxGas,
+          tx.baseGas,
+          tx.gasPrice,
+          tx.gasToken,
+          tx.refundReceiver,
+          signatureBytes
+        )
+      ).to.be.revertedWith("Transaction is not in the queued state");
     });
   });
 });

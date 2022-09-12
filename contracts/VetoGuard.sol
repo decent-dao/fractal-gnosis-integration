@@ -63,9 +63,7 @@ contract VetoGuard is FactoryFriendly, BaseGuard {
         uint256 baseGas,
         uint256 gasPrice,
         address gasToken,
-        address payable refundReceiver,
-        bytes memory signatures,
-        address msgSender
+        address payable refundReceiver
     ) external {
         bytes32 transactionHash = getTransactionHash(
             to,
@@ -230,7 +228,7 @@ contract VetoGuard is FactoryFriendly, BaseGuard {
         uint256 gasPrice,
         address gasToken,
         address refundReceiver
-    ) public view returns (bytes32) {
+    ) public pure returns (bytes32) {
         return
             keccak256(
                 encodeTransactionData(

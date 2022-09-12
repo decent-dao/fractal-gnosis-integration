@@ -1,30 +1,13 @@
 import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/signers";
 import { expect } from "chai";
-import { BigNumber, Contract, ContractTransaction } from "ethers";
-import { Interface } from "ethers/lib/utils";
+import { BigNumber, Contract } from "ethers";
 import { ethers, network } from "hardhat";
 import {
-  DAO__factory,
-  DAO,
-  DAOFactory,
-  DAOFactory__factory,
-  DAOAccessControl,
-  DAOAccessControl__factory,
-  MetaFactory,
-  MetaFactory__factory,
-  ERC1967Proxy__factory,
-  GnosisWrapperFactory,
-  GnosisWrapper,
-  GnosisWrapper__factory,
-  GnosisWrapperFactory__factory,
-  IGnosisWrapper__factory,
   Token,
   Token__factory,
   VetoGuard,
   VetoGuard__factory,
-  GnosisSafe,
 } from "../typechain-types";
-import getInterfaceSelector from "./getInterfaceSelector";
 
 import {
   buildSignatureBytes,
@@ -32,27 +15,14 @@ import {
   safeSignTypedData,
   ifaceSafe,
   abi,
-  abiSafe,
-  iface,
 } from "./helpers";
 
 describe.only("Gnosis Safe Veto Guard", () => {
   // Factories
-  let daoFactory: DAOFactory;
-  let metaFactory: MetaFactory;
   let gnosisFactory: Contract;
-  let gnosisWrapperFactory: GnosisWrapperFactory;
-
-  // Impl
-  let accessControlImpl: DAOAccessControl;
-  let daoImpl: DAO;
-  let gnosisWrapperImpl: GnosisWrapper;
 
   // Deployed contracts
-  let accessControl: DAOAccessControl;
-  let dao: DAO;
   let gnosisSafe: Contract;
-  let gnosisWrapper: GnosisWrapper;
   let vetoGuard: VetoGuard;
   let token: Token;
 
@@ -63,21 +33,8 @@ describe.only("Gnosis Safe Veto Guard", () => {
   let owner3: SignerWithAddress;
   let vetoGuardOwner: SignerWithAddress;
 
-  let tx: ContractTransaction;
-
   // Gnosis
   let createGnosisSetupCalldata: string;
-  let createGnosisSafeCalldata: string;
-
-  const ifaceToken = new Interface([
-    "function approve(address spender, uint256 amount) public returns (bool)",
-  ]);
-
-  const abiToken = [
-    "event Transfer(address indexed from, address indexed to, uint256 value)",
-    "function allowance(address owner, address spender) public view returns (uint256)",
-    "function approve(address spender, uint256 amount) public returns (bool)",
-  ];
 
   async function predictGnosisSafeAddress(
     factory: string,
@@ -212,6 +169,59 @@ describe.only("Gnosis Safe Veto Guard", () => {
   });
 
   describe("Native Gnosis Safe with VetoGuard", () => {
+    it("A transaction can be queued and executed", async () => {
+      // Create transaction to set the guard address
+      const tokenTransferData = token.interface.encodeFunctionData("transfer", [
+        deployer.address,
+        1000,
+      ]);
+
+      const tx = buildSafeTransaction({
+        to: gnosisSafe.address,
+        data: tokenTransferData,
+        safeTxGas: 1000000,
+        nonce: await gnosisSafe.nonce(),
+      });
+
+      const sigs = [
+        await safeSignTypedData(owner1, gnosisSafe, tx),
+        await safeSignTypedData(owner2, gnosisSafe, tx),
+      ];
+      const signatureBytes = buildSignatureBytes(sigs);
+
+      await vetoGuard.queueTransaction(
+        tx.to,
+        tx.value,
+        tx.data,
+        tx.operation,
+        tx.safeTxGas,
+        tx.baseGas,
+        tx.gasPrice,
+        tx.gasToken,
+        tx.refundReceiver,
+        signatureBytes,
+        deployer.address
+      );
+
+      // Mine blocks to surpass the execution delay
+      for (let i = 0; i < 9; i++) {
+        await network.provider.send("evm_mine");
+      }
+
+      await gnosisSafe.execTransaction(
+        tx.to,
+        tx.value,
+        tx.data,
+        tx.operation,
+        tx.safeTxGas,
+        tx.baseGas,
+        tx.gasPrice,
+        tx.gasToken,
+        tx.refundReceiver,
+        signatureBytes
+      );
+    });
+
     it("A transaction cannot be executed if it hasn't yet been queued", async () => {
       // Create transaction to set the guard address
       const tokenTransferData = token.interface.encodeFunctionData("transfer", [
@@ -225,6 +235,7 @@ describe.only("Gnosis Safe Veto Guard", () => {
         safeTxGas: 1000000,
         nonce: await gnosisSafe.nonce(),
       });
+
       const sigs = [
         await safeSignTypedData(owner1, gnosisSafe, tx),
         await safeSignTypedData(owner2, gnosisSafe, tx),
@@ -246,5 +257,55 @@ describe.only("Gnosis Safe Veto Guard", () => {
         )
       ).to.be.revertedWith("Transaction is not in the queued state");
     });
+  });
+
+  it("A transaction cannot be executed if the delay period has not been reached yet", async () => {
+    // Create transaction to set the guard address
+    const tokenTransferData = token.interface.encodeFunctionData("transfer", [
+      deployer.address,
+      1000,
+    ]);
+
+    const tx = buildSafeTransaction({
+      to: gnosisSafe.address,
+      data: tokenTransferData,
+      safeTxGas: 1000000,
+      nonce: await gnosisSafe.nonce(),
+    });
+
+    const sigs = [
+      await safeSignTypedData(owner1, gnosisSafe, tx),
+      await safeSignTypedData(owner2, gnosisSafe, tx),
+    ];
+    const signatureBytes = buildSignatureBytes(sigs);
+
+    await vetoGuard.queueTransaction(
+      tx.to,
+      tx.value,
+      tx.data,
+      tx.operation,
+      tx.safeTxGas,
+      tx.baseGas,
+      tx.gasPrice,
+      tx.gasToken,
+      tx.refundReceiver,
+      signatureBytes,
+      deployer.address
+    );
+
+    await expect(
+      gnosisSafe.execTransaction(
+        tx.to,
+        tx.value,
+        tx.data,
+        tx.operation,
+        tx.safeTxGas,
+        tx.baseGas,
+        tx.gasPrice,
+        tx.gasToken,
+        tx.refundReceiver,
+        signatureBytes
+      )
+    ).to.be.revertedWith("Transaction delay period has not completed yet");
   });
 });

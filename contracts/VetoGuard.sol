@@ -146,7 +146,7 @@ contract VetoGuard is FactoryFriendly, BaseGuard {
         );
 
         require(
-            transactionData[transactionHash].state == TransactionState.pending,
+            transactionData[transactionHash].state == TransactionState.queued,
             "Transaction is not in the queued state"
         );
         require(

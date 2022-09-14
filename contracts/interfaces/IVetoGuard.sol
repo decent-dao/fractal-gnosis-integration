@@ -24,16 +24,4 @@ interface IVetoGuard {
         address gasToken,
         address payable refundReceiver
     ) external view returns (uint256);
-
-    function getTransactionState(
-        address to,
-        uint256 value,
-        bytes memory data,
-        Enum.Operation operation,
-        uint256 safeTxGas,
-        uint256 baseGas,
-        uint256 gasPrice,
-        address gasToken,
-        address payable refundReceiver
-    ) external view returns (TransactionState);
 }

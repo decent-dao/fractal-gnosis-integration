@@ -1,25 +1,17 @@
 //SPDX-License-Identifier: Unlicense
 pragma solidity ^0.8.0;
 
+import "./interfaces/IVetoGuard.sol";
 import "@gnosis.pm/zodiac/contracts/guard/BaseGuard.sol";
 import "@gnosis.pm/zodiac/contracts/factory/FactoryFriendly.sol";
 import "@gnosis.pm/safe-contracts/contracts/common/Enum.sol";
 import "@gnosis.pm/safe-contracts/contracts/GnosisSafe.sol";
 
-contract VetoGuard is FactoryFriendly, BaseGuard {
-    enum TransactionState {
-        pending, // 0
-        queued, // 1
-        readyToExecute, // 2
-        vetoed // 3
-    }
-
+contract VetoGuard is FactoryFriendly, BaseGuard, IVetoGuard {
     struct TransactionData {
         TransactionState state;
         uint256 queuedBlock;
     }
-
-    event VetoGuardSetup(address indexed creator, address indexed owner);
 
     // address public gnosisSafe;
     uint256 public executionDelayBlocks;

@@ -8,7 +8,6 @@ import "@gnosis.pm/safe-contracts/contracts/common/Enum.sol";
 
 contract VetoVoting is IVetoERC20Voting {
     uint256 public vetoVotesThreshold;
-    address public gnosisSafe;
     IERC20Votes public votesToken;
     IVetoGuard public vetoGuard;
     mapping(bytes32 => uint256) public transactionVetoVotes;
@@ -22,12 +21,10 @@ contract VetoVoting is IVetoERC20Voting {
 
     constructor(
         uint256 _vetoVotesThreshold,
-        address _gnosisSafe,
         address _votesToken,
         address _vetoGuard
     ) {
         vetoVotesThreshold = _vetoVotesThreshold;
-        gnosisSafe = _gnosisSafe;
         votesToken = IERC20Votes(_votesToken);
         vetoGuard = IVetoGuard(_vetoGuard);
     }

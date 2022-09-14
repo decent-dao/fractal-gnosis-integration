@@ -2,20 +2,17 @@
 pragma solidity ^0.8.0;
 
 import "./interfaces/IVetoGuard.sol";
+import "./interfaces/IVetoERC20Voting.sol";
 import "@gnosis.pm/zodiac/contracts/guard/BaseGuard.sol";
 import "@gnosis.pm/zodiac/contracts/factory/FactoryFriendly.sol";
 import "@gnosis.pm/safe-contracts/contracts/common/Enum.sol";
 import "@gnosis.pm/safe-contracts/contracts/GnosisSafe.sol";
 
 contract VetoGuard is FactoryFriendly, BaseGuard, IVetoGuard {
-    struct TransactionData {
-        TransactionState state;
-        uint256 queuedBlock;
-    }
-
     // address public gnosisSafe;
     uint256 public executionDelayBlocks;
-    mapping(bytes32 => TransactionData) transactionData;
+    IVetoERC20Voting public vetoERC20Voting;
+    mapping(bytes32 => uint256) transactionQueuedBlock;
 
     // todo: need to look into these two values and if we need it in this contract
     bytes32 private constant SAFE_TX_TYPEHASH =
@@ -23,10 +20,15 @@ contract VetoGuard is FactoryFriendly, BaseGuard, IVetoGuard {
     bytes32 private constant DOMAIN_SEPARATOR_TYPEHASH =
         0x47e79534a245952e8b16893a336b85a3d9ea9fa8c573f3d803afb92a79469218;
 
-    constructor(address _owner, uint256 _executionDelayBlocks) {
+    constructor(
+        address _owner,
+        uint256 _executionDelayBlocks,
+        address _vetoERC20Voting
+    ) {
         bytes memory initializeParams = abi.encode(
             _owner,
-            _executionDelayBlocks
+            _executionDelayBlocks,
+            _vetoERC20Voting
         );
         setUp(initializeParams);
     }
@@ -35,13 +37,15 @@ contract VetoGuard is FactoryFriendly, BaseGuard, IVetoGuard {
     /// @param initializeParams Parameters of initialization encoded
     function setUp(bytes memory initializeParams) public override initializer {
         __Ownable_init();
-        (address _owner, uint256 _executionDelayBlocks) = abi.decode(
-            initializeParams,
-            (address, uint256)
-        );
+        (
+            address _owner,
+            uint256 _executionDelayBlocks,
+            address _vetoERC20Voting
+        ) = abi.decode(initializeParams, (address, uint256, address));
 
         transferOwnership(_owner);
         executionDelayBlocks = _executionDelayBlocks;
+        vetoERC20Voting = IVetoERC20Voting(_vetoERC20Voting);
 
         emit VetoGuardSetup(msg.sender, _owner);
     }
@@ -70,45 +74,13 @@ contract VetoGuard is FactoryFriendly, BaseGuard, IVetoGuard {
         );
 
         require(
-            transactionData[transactionHash].state == TransactionState.pending,
-            "Transaction must be in the pending state to queue"
+            transactionQueuedBlock[transactionHash] == 0,
+            "Transaction has already been queued"
         );
 
         // todo: Add in checkSignatures to ensure transaction is valid and has been signed
 
-        transactionData[transactionHash].state = TransactionState.queued;
-        transactionData[transactionHash].queuedBlock = block.number;
-    }
-
-    // Only the owner (Fractal veto module) can call this function
-    function vetoTransaction(
-        address to,
-        uint256 value,
-        bytes memory data,
-        Enum.Operation operation,
-        uint256 safeTxGas,
-        uint256 baseGas,
-        uint256 gasPrice,
-        address gasToken,
-        address payable refundReceiver
-    ) external onlyOwner {
-        bytes32 transactionHash = getTransactionHash(
-            to,
-            value,
-            data,
-            operation,
-            safeTxGas,
-            baseGas,
-            gasPrice,
-            gasToken,
-            refundReceiver
-        );
-
-        require(
-            transactionData[transactionHash].state == TransactionState.pending,
-            "Transaction must be in the queued state to veto"
-        );
-        transactionData[transactionHash].state = TransactionState.vetoed;
+        transactionQueuedBlock[transactionHash] = block.number;
     }
 
     function checkTransaction(
@@ -137,14 +109,29 @@ contract VetoGuard is FactoryFriendly, BaseGuard, IVetoGuard {
         );
 
         require(
-            transactionData[transactionHash].state == TransactionState.queued,
-            "Transaction is not in the queued state"
+            transactionQueuedBlock[transactionHash] != 0,
+            "Transaction has not been queued yet"
         );
+
         require(
             block.number >=
-                transactionData[transactionHash].queuedBlock +
-                    executionDelayBlocks,
+                transactionQueuedBlock[transactionHash] + executionDelayBlocks,
             "Transaction delay period has not completed yet"
+        );
+
+        require(
+            !vetoERC20Voting.getIsVetoed(
+                to,
+                value,
+                data,
+                operation,
+                safeTxGas,
+                baseGas,
+                gasPrice,
+                gasToken,
+                refundReceiver
+            ),
+            "Transaction has been vetoed"
         );
     }
 
@@ -237,33 +224,6 @@ contract VetoGuard is FactoryFriendly, BaseGuard, IVetoGuard {
             );
     }
 
-    function getTransactionState(
-        address to,
-        uint256 value,
-        bytes memory data,
-        Enum.Operation operation,
-        uint256 safeTxGas,
-        uint256 baseGas,
-        uint256 gasPrice,
-        address gasToken,
-        address payable refundReceiver
-    ) public view returns (TransactionState) {
-        return
-            transactionData[
-                getTransactionHash(
-                    to,
-                    value,
-                    data,
-                    operation,
-                    safeTxGas,
-                    baseGas,
-                    gasPrice,
-                    gasToken,
-                    refundReceiver
-                )
-            ].state;
-    }
-
     function getTransactionQueuedBlock(
         address to,
         uint256 value,
@@ -276,7 +236,7 @@ contract VetoGuard is FactoryFriendly, BaseGuard, IVetoGuard {
         address payable refundReceiver
     ) public view returns (uint256) {
         return
-            transactionData[
+            transactionQueuedBlock[
                 getTransactionHash(
                     to,
                     value,
@@ -288,6 +248,6 @@ contract VetoGuard is FactoryFriendly, BaseGuard, IVetoGuard {
                     gasToken,
                     refundReceiver
                 )
-            ].queuedBlock;
+            ];
     }
 }

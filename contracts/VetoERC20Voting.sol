@@ -3,9 +3,10 @@ pragma solidity ^0.8.0;
 
 import "./interfaces/IERC20Votes.sol";
 import "./interfaces/IVetoGuard.sol";
+import "./interfaces/IVetoERC20Voting.sol";
 import "@gnosis.pm/safe-contracts/contracts/common/Enum.sol";
 
-contract VetoVoting {
+contract VetoVoting is IVetoERC20Voting {
     uint256 public vetoVotesThreshold;
     address public gnosisSafe;
     IERC20Votes public votesToken;

@@ -6,7 +6,7 @@ import "./interfaces/IVetoGuard.sol";
 import "./interfaces/IVetoERC20Voting.sol";
 import "@gnosis.pm/safe-contracts/contracts/common/Enum.sol";
 
-contract VetoVoting is IVetoERC20Voting {
+contract VetoERC20Voting is IVetoERC20Voting {
     uint256 public vetoVotesThreshold;
     IERC20Votes public votesToken;
     IVetoGuard public vetoGuard;
@@ -61,7 +61,7 @@ contract VetoVoting is IVetoERC20Voting {
 
         // Check that the transaction has been queued
         require(
-            vetoGuard.getTransactionState(
+            vetoGuard.getTransactionQueuedBlock(
                 to,
                 value,
                 data,
@@ -71,7 +71,7 @@ contract VetoVoting is IVetoERC20Voting {
                 gasPrice,
                 gasToken,
                 refundReceiver
-            ) == IVetoGuard.TransactionState.queued,
+            ) != 0,
             "Transaction has not yet been queued"
         );
 
@@ -222,7 +222,6 @@ contract VetoVoting is IVetoERC20Voting {
         address gasToken,
         address payable refundReceiver
     ) external view returns (uint256) {
-        // Get the transaction hash
         bytes32 transactionHash = getTransactionHash(
             to,
             value,

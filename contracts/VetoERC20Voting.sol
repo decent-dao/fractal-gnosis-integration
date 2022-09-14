@@ -5,8 +5,9 @@ import "./interfaces/IERC20Votes.sol";
 import "./interfaces/IVetoGuard.sol";
 import "./interfaces/IVetoERC20Voting.sol";
 import "@gnosis.pm/safe-contracts/contracts/common/Enum.sol";
+import "@openzeppelin/contracts/proxy/utils/Initializable.sol";
 
-contract VetoERC20Voting is IVetoERC20Voting {
+contract VetoERC20Voting is IVetoERC20Voting, Initializable {
     uint256 public vetoVotesThreshold;
     IERC20Votes public votesToken;
     IVetoGuard public vetoGuard;
@@ -19,11 +20,11 @@ contract VetoERC20Voting is IVetoERC20Voting {
     bytes32 private constant DOMAIN_SEPARATOR_TYPEHASH =
         0x47e79534a245952e8b16893a336b85a3d9ea9fa8c573f3d803afb92a79469218;
 
-    constructor(
+    function initialize(
         uint256 _vetoVotesThreshold,
         address _votesToken,
         address _vetoGuard
-    ) {
+    ) initializer public {
         vetoVotesThreshold = _vetoVotesThreshold;
         votesToken = IERC20Votes(_votesToken);
         vetoGuard = IVetoGuard(_vetoGuard);

@@ -3,8 +3,10 @@ import { expect } from "chai";
 import { BigNumber, Contract } from "ethers";
 import { ethers, network } from "hardhat";
 import {
-  Token,
-  Token__factory,
+  VotesToken,
+  VotesToken__factory,
+  VetoERC20Voting,
+  VetoERC20Voting__factory,
   VetoGuard,
   VetoGuard__factory,
 } from "../typechain-types";
@@ -24,13 +26,16 @@ describe.only("Gnosis Safe Veto Guard", () => {
   // Deployed contracts
   let gnosisSafe: Contract;
   let vetoGuard: VetoGuard;
-  let token: Token;
+  let vetoERC20Voting: VetoERC20Voting;
+  let votesToken: VotesToken;
 
   // Wallets
   let deployer: SignerWithAddress;
   let owner1: SignerWithAddress;
   let owner2: SignerWithAddress;
   let owner3: SignerWithAddress;
+  let tokenVetoer1: SignerWithAddress;
+  let tokenVetoer2: SignerWithAddress;
   let vetoGuardOwner: SignerWithAddress;
 
   // Gnosis
@@ -81,8 +86,15 @@ describe.only("Gnosis Safe Veto Guard", () => {
       ],
     });
 
-    [deployer, owner1, owner2, owner3, vetoGuardOwner] =
-      await ethers.getSigners();
+    [
+      deployer,
+      owner1,
+      owner2,
+      owner3,
+      tokenVetoer1,
+      tokenVetoer2,
+      vetoGuardOwner,
+    ] = await ethers.getSigners();
 
     // Get deployed Gnosis Safe
     gnosisFactory = new ethers.Contract(gnosisFactoryAddress, abi, deployer);
@@ -119,17 +131,32 @@ describe.only("Gnosis Safe Veto Guard", () => {
     );
 
     // Deploy token, give supply to Gnosis Safe
-    token = await new Token__factory(deployer).deploy(
+    votesToken = await new VotesToken__factory(deployer).deploy(
       "DCNT",
       "DCNT",
-      predictedGnosisSafeAddress,
-      1000
+      [tokenVetoer1.address, tokenVetoer2.address, gnosisSafe.address],
+      [500, 600, 1000]
     );
+
+    // Vetoers delegate their votes to themselves
+    await votesToken.connect(tokenVetoer1).delegate(tokenVetoer1.address);
+    await votesToken.connect(tokenVetoer2).delegate(tokenVetoer2.address);
+
+    // Deploy VetoERC20Voting contract
+    vetoERC20Voting = await new VetoERC20Voting__factory(deployer).deploy();
 
     // Deploy veto guard contract with a 10 block delay between queuing and execution
     vetoGuard = await new VetoGuard__factory(deployer).deploy(
       vetoGuardOwner.address,
-      10
+      10,
+      vetoERC20Voting.address
+    );
+
+    // Initialize VetoERC20Voting contract
+    await vetoERC20Voting.initialize(
+      1000,
+      votesToken.address,
+      vetoGuard.address
     );
 
     // Create transaction to set the guard address
@@ -149,6 +176,7 @@ describe.only("Gnosis Safe Veto Guard", () => {
     ];
     const signatureBytes = buildSignatureBytes(sigs);
 
+    // Execute transaction that adds the veto guard to the Safe
     await expect(
       gnosisSafe.execTransaction(
         tx.to,
@@ -165,19 +193,19 @@ describe.only("Gnosis Safe Veto Guard", () => {
     ).to.emit(gnosisSafe, "ExecutionSuccess");
 
     // Gnosis Safe received the 1,000 tokens
-    expect(await token.balanceOf(gnosisSafe.address)).to.eq(1000);
+    expect(await votesToken.balanceOf(gnosisSafe.address)).to.eq(1000);
   });
 
   describe("Native Gnosis Safe with VetoGuard", () => {
     it("A transaction can be queued and executed", async () => {
       // Create transaction to set the guard address
-      const tokenTransferData = token.interface.encodeFunctionData("transfer", [
-        deployer.address,
-        1000,
-      ]);
+      const tokenTransferData = votesToken.interface.encodeFunctionData(
+        "transfer",
+        [deployer.address, 1000]
+      );
 
       const tx = buildSafeTransaction({
-        to: gnosisSafe.address,
+        to: votesToken.address,
         data: tokenTransferData,
         safeTxGas: 1000000,
         nonce: await gnosisSafe.nonce(),
@@ -218,17 +246,20 @@ describe.only("Gnosis Safe Veto Guard", () => {
         tx.refundReceiver,
         signatureBytes
       );
+
+      expect(await votesToken.balanceOf(gnosisSafe.address)).to.eq(0);
+      expect(await votesToken.balanceOf(deployer.address)).to.eq(1000);
     });
 
     it("A transaction cannot be executed if it hasn't yet been queued", async () => {
       // Create transaction to set the guard address
-      const tokenTransferData = token.interface.encodeFunctionData("transfer", [
-        deployer.address,
-        1000,
-      ]);
+      const tokenTransferData = votesToken.interface.encodeFunctionData(
+        "transfer",
+        [deployer.address, 1000]
+      );
 
       const tx = buildSafeTransaction({
-        to: gnosisSafe.address,
+        to: votesToken.address,
         data: tokenTransferData,
         safeTxGas: 1000000,
         nonce: await gnosisSafe.nonce(),
@@ -253,19 +284,19 @@ describe.only("Gnosis Safe Veto Guard", () => {
           tx.refundReceiver,
           signatureBytes
         )
-      ).to.be.revertedWith("Transaction is not in the queued state");
+      ).to.be.revertedWith("Transaction has not been queued yet");
     });
   });
 
   it("A transaction cannot be executed if the delay period has not been reached yet", async () => {
     // Create transaction to set the guard address
-    const tokenTransferData = token.interface.encodeFunctionData("transfer", [
-      deployer.address,
-      1000,
-    ]);
+    const tokenTransferData = votesToken.interface.encodeFunctionData(
+      "transfer",
+      [deployer.address, 1000]
+    );
 
     const tx = buildSafeTransaction({
-      to: gnosisSafe.address,
+      to: votesToken.address,
       data: tokenTransferData,
       safeTxGas: 1000000,
       nonce: await gnosisSafe.nonce(),
@@ -303,5 +334,304 @@ describe.only("Gnosis Safe Veto Guard", () => {
         signatureBytes
       )
     ).to.be.revertedWith("Transaction delay period has not completed yet");
+  });
+
+  it("A transaction can be executed if it has received some veto votes, but not above the threshold", async () => {
+    // Create transaction to set the guard address
+    const tokenTransferData = votesToken.interface.encodeFunctionData(
+      "transfer",
+      [deployer.address, 1000]
+    );
+
+    const tx = buildSafeTransaction({
+      to: votesToken.address,
+      data: tokenTransferData,
+      safeTxGas: 1000000,
+      nonce: await gnosisSafe.nonce(),
+    });
+
+    const sigs = [
+      await safeSignTypedData(owner1, gnosisSafe, tx),
+      await safeSignTypedData(owner2, gnosisSafe, tx),
+    ];
+    const signatureBytes = buildSignatureBytes(sigs);
+
+    await vetoGuard.queueTransaction(
+      tx.to,
+      tx.value,
+      tx.data,
+      tx.operation,
+      tx.safeTxGas,
+      tx.baseGas,
+      tx.gasPrice,
+      tx.gasToken,
+      tx.refundReceiver
+    );
+
+    // Vetoer 1 casts 500 veto votes
+    await vetoERC20Voting
+      .connect(tokenVetoer1)
+      .castVetoVote(
+        tx.to,
+        tx.value,
+        tx.data,
+        tx.operation,
+        tx.safeTxGas,
+        tx.baseGas,
+        tx.gasPrice,
+        tx.gasToken,
+        tx.refundReceiver
+      );
+
+    // 500 veto votes have been cast
+    expect(
+      await vetoERC20Voting.getVetoVotes(
+        tx.to,
+        tx.value,
+        tx.data,
+        tx.operation,
+        tx.safeTxGas,
+        tx.baseGas,
+        tx.gasPrice,
+        tx.gasToken,
+        tx.refundReceiver
+      )
+    ).to.eq(500);
+
+    expect(
+      await vetoERC20Voting.getIsVetoed(
+        tx.to,
+        tx.value,
+        tx.data,
+        tx.operation,
+        tx.safeTxGas,
+        tx.baseGas,
+        tx.gasPrice,
+        tx.gasToken,
+        tx.refundReceiver
+      )
+    ).to.eq(false);
+
+    // Mine blocks to surpass the execution delay
+    for (let i = 0; i < 9; i++) {
+      await network.provider.send("evm_mine");
+    }
+
+    await gnosisSafe.execTransaction(
+      tx.to,
+      tx.value,
+      tx.data,
+      tx.operation,
+      tx.safeTxGas,
+      tx.baseGas,
+      tx.gasPrice,
+      tx.gasToken,
+      tx.refundReceiver,
+      signatureBytes
+    );
+
+    expect(await votesToken.balanceOf(deployer.address)).to.eq(1000);
+    expect(await votesToken.balanceOf(gnosisSafe.address)).to.eq(0);
+  });
+
+  it("A transaction cannot be executed if it has received more veto votes than the threshold", async () => {
+    // Create transaction to set the guard address
+    const tokenTransferData = votesToken.interface.encodeFunctionData(
+      "transfer",
+      [deployer.address, 1000]
+    );
+
+    const tx = buildSafeTransaction({
+      to: votesToken.address,
+      data: tokenTransferData,
+      safeTxGas: 1000000,
+      nonce: await gnosisSafe.nonce(),
+    });
+
+    const sigs = [
+      await safeSignTypedData(owner1, gnosisSafe, tx),
+      await safeSignTypedData(owner2, gnosisSafe, tx),
+    ];
+    const signatureBytes = buildSignatureBytes(sigs);
+
+    await vetoGuard.queueTransaction(
+      tx.to,
+      tx.value,
+      tx.data,
+      tx.operation,
+      tx.safeTxGas,
+      tx.baseGas,
+      tx.gasPrice,
+      tx.gasToken,
+      tx.refundReceiver
+    );
+
+    // Vetoer 1 casts 500 veto votes
+    await vetoERC20Voting
+      .connect(tokenVetoer1)
+      .castVetoVote(
+        tx.to,
+        tx.value,
+        tx.data,
+        tx.operation,
+        tx.safeTxGas,
+        tx.baseGas,
+        tx.gasPrice,
+        tx.gasToken,
+        tx.refundReceiver
+      );
+
+    // Vetoer 2 casts 600 veto votes
+    await vetoERC20Voting
+      .connect(tokenVetoer2)
+      .castVetoVote(
+        tx.to,
+        tx.value,
+        tx.data,
+        tx.operation,
+        tx.safeTxGas,
+        tx.baseGas,
+        tx.gasPrice,
+        tx.gasToken,
+        tx.refundReceiver
+      );
+
+    // 1100 veto votes have been cast
+    expect(
+      await vetoERC20Voting.getVetoVotes(
+        tx.to,
+        tx.value,
+        tx.data,
+        tx.operation,
+        tx.safeTxGas,
+        tx.baseGas,
+        tx.gasPrice,
+        tx.gasToken,
+        tx.refundReceiver
+      )
+    ).to.eq(1100);
+
+    expect(
+      await vetoERC20Voting.getIsVetoed(
+        tx.to,
+        tx.value,
+        tx.data,
+        tx.operation,
+        tx.safeTxGas,
+        tx.baseGas,
+        tx.gasPrice,
+        tx.gasToken,
+        tx.refundReceiver
+      )
+    ).to.eq(true);
+
+    // Mine blocks to surpass the execution delay
+    for (let i = 0; i < 9; i++) {
+      await network.provider.send("evm_mine");
+    }
+
+    await expect(
+      gnosisSafe.execTransaction(
+        tx.to,
+        tx.value,
+        tx.data,
+        tx.operation,
+        tx.safeTxGas,
+        tx.baseGas,
+        tx.gasPrice,
+        tx.gasToken,
+        tx.refundReceiver,
+        signatureBytes
+      )
+    ).to.be.revertedWith("Transaction has been vetoed");
+  });
+
+  it("A vetoer cannot cast veto votes more than once", async () => {
+    // Create transaction to set the guard address
+    const tokenTransferData = votesToken.interface.encodeFunctionData(
+      "transfer",
+      [deployer.address, 1000]
+    );
+
+    const tx = buildSafeTransaction({
+      to: votesToken.address,
+      data: tokenTransferData,
+      safeTxGas: 1000000,
+      nonce: await gnosisSafe.nonce(),
+    });
+
+    await vetoGuard.queueTransaction(
+      tx.to,
+      tx.value,
+      tx.data,
+      tx.operation,
+      tx.safeTxGas,
+      tx.baseGas,
+      tx.gasPrice,
+      tx.gasToken,
+      tx.refundReceiver
+    );
+
+    // Vetoer 1 casts 500 veto votes
+    await vetoERC20Voting
+      .connect(tokenVetoer1)
+      .castVetoVote(
+        tx.to,
+        tx.value,
+        tx.data,
+        tx.operation,
+        tx.safeTxGas,
+        tx.baseGas,
+        tx.gasPrice,
+        tx.gasToken,
+        tx.refundReceiver
+      );
+
+    await expect(
+      vetoERC20Voting
+        .connect(tokenVetoer1)
+        .castVetoVote(
+          tx.to,
+          tx.value,
+          tx.data,
+          tx.operation,
+          tx.safeTxGas,
+          tx.baseGas,
+          tx.gasPrice,
+          tx.gasToken,
+          tx.refundReceiver
+        )
+    ).to.be.revertedWith("User has already voted");
+  });
+
+  it("A veto vote cannot be cast if the transaction has not been queued yet", async () => {
+    // Create transaction to set the guard address
+    const tokenTransferData = votesToken.interface.encodeFunctionData(
+      "transfer",
+      [deployer.address, 1000]
+    );
+
+    const tx = buildSafeTransaction({
+      to: votesToken.address,
+      data: tokenTransferData,
+      safeTxGas: 1000000,
+      nonce: await gnosisSafe.nonce(),
+    });
+
+    await expect(
+      vetoERC20Voting
+        .connect(tokenVetoer1)
+        .castVetoVote(
+          tx.to,
+          tx.value,
+          tx.data,
+          tx.operation,
+          tx.safeTxGas,
+          tx.baseGas,
+          tx.gasPrice,
+          tx.gasToken,
+          tx.refundReceiver
+        )
+    ).to.be.revertedWith("Transaction has not yet been queued");
   });
 });

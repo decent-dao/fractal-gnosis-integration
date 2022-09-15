@@ -20,7 +20,7 @@ import {
   predictGnosisSafeAddress,
 } from "./helpers";
 
-describe.only("Gnosis Safe Veto Guard", () => {
+describe("Gnosis Safe", () => {
   // Factories
   let gnosisFactory: Contract;
 
@@ -50,6 +50,7 @@ describe.only("Gnosis Safe Veto Guard", () => {
   );
 
   beforeEach(async () => {
+    // Fork Goerli to use contracts deployed on Goerli
     await network.provider.request({
       method: "hardhat_reset",
       params: [
@@ -109,7 +110,7 @@ describe.only("Gnosis Safe Veto Guard", () => {
       predictedGnosisSafeAddress
     );
 
-    // Deploy token, give supply to Gnosis Safe
+    // Deploy token, allocate supply to two token vetoers and Gnosis Safe
     votesToken = await new VotesToken__factory(deployer).deploy(
       "DCNT",
       "DCNT",
@@ -124,7 +125,7 @@ describe.only("Gnosis Safe Veto Guard", () => {
     // Deploy VetoERC20Voting contract
     vetoERC20Voting = await new VetoERC20Voting__factory(deployer).deploy();
 
-    // Deploy veto guard contract with a 10 block delay between queuing and execution
+    // Deploy VetoGuard contract with a 10 block delay between queuing and execution
     vetoGuard = await new VetoGuard__factory(deployer).deploy(
       vetoGuardOwner.address,
       10,

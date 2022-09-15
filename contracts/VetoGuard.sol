@@ -3,27 +3,35 @@ pragma solidity ^0.8.0;
 
 import "./interfaces/IVetoGuard.sol";
 import "./interfaces/IVetoERC20Voting.sol";
+import "./interfaces/IGnosisSafe.sol";
 import "./TransactionHasher.sol";
 import "@gnosis.pm/zodiac/contracts/guard/BaseGuard.sol";
 import "@gnosis.pm/zodiac/contracts/factory/FactoryFriendly.sol";
 import "@gnosis.pm/safe-contracts/contracts/common/Enum.sol";
 import "@gnosis.pm/safe-contracts/contracts/GnosisSafe.sol";
 
-contract VetoGuard is TransactionHasher, FactoryFriendly, BaseGuard, IVetoGuard {
-    // address public gnosisSafe;
+contract VetoGuard is
+    TransactionHasher,
+    FactoryFriendly,
+    BaseGuard,
+    IVetoGuard
+{
     uint256 public executionDelayBlocks;
     IVetoERC20Voting public vetoERC20Voting;
+    IGnosisSafe public gnosisSafe;
     mapping(bytes32 => uint256) transactionQueuedBlock;
 
     constructor(
         address _owner,
         uint256 _executionDelayBlocks,
-        address _vetoERC20Voting
+        address _vetoERC20Voting,
+        address _gnosisSafe
     ) {
         bytes memory initializeParams = abi.encode(
-            _owner,
             _executionDelayBlocks,
-            _vetoERC20Voting
+            _owner,
+            _vetoERC20Voting,
+            _gnosisSafe
         );
         setUp(initializeParams);
     }
@@ -33,16 +41,24 @@ contract VetoGuard is TransactionHasher, FactoryFriendly, BaseGuard, IVetoGuard 
     function setUp(bytes memory initializeParams) public override initializer {
         __Ownable_init();
         (
-            address _owner,
             uint256 _executionDelayBlocks,
-            address _vetoERC20Voting
-        ) = abi.decode(initializeParams, (address, uint256, address));
+            address _owner,
+            address _vetoERC20Voting,
+            address _gnosisSafe
+        ) = abi.decode(initializeParams, (uint256, address, address, address));
 
-        transferOwnership(_owner);
         executionDelayBlocks = _executionDelayBlocks;
+        transferOwnership(_owner);
         vetoERC20Voting = IVetoERC20Voting(_vetoERC20Voting);
+        gnosisSafe = IGnosisSafe(_gnosisSafe);
 
-        emit VetoGuardSetup(msg.sender, _owner);
+        emit VetoGuardSetup(
+            msg.sender,
+            _executionDelayBlocks,
+            _owner,
+            _vetoERC20Voting,
+            _gnosisSafe
+        );
     }
 
     function queueTransaction(

@@ -11,7 +11,13 @@ interface IVetoGuard {
         vetoed // 3
     }
 
-    event VetoGuardSetup(address indexed creator, address indexed owner);
+    event VetoGuardSetup(
+        address creator,
+        uint256 executionDelayBlocks,
+        address indexed owner,
+        address indexed vetoERC20Voting,
+        address indexed gnosisSafe
+    );
 
     function getTransactionQueuedBlock(
         address to,

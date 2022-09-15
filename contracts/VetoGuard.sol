@@ -70,8 +70,32 @@ contract VetoGuard is
         uint256 baseGas,
         uint256 gasPrice,
         address gasToken,
-        address payable refundReceiver
+        address payable refundReceiver,
+        bytes memory signatures
     ) external {
+        bytes memory gnosisTransactionHash = gnosisSafe.encodeTransactionData(
+            // Transaction info
+            to,
+            value,
+            data,
+            operation,
+            safeTxGas,
+            // Payment info
+            baseGas,
+            gasPrice,
+            gasToken,
+            refundReceiver,
+            // Signature info
+            gnosisSafe.nonce()
+        );
+
+        // If signatures are not valid, this will revert
+        gnosisSafe.checkSignatures(
+            keccak256(gnosisTransactionHash),
+            gnosisTransactionHash,
+            signatures
+        );
+
         bytes32 transactionHash = getTransactionHash(
             to,
             value,
@@ -88,8 +112,6 @@ contract VetoGuard is
             transactionQueuedBlock[transactionHash] == 0,
             "Transaction has already been queued"
         );
-
-        // todo: Add in checkSignatures to ensure transaction is valid and has been signed
 
         transactionQueuedBlock[transactionHash] = block.number;
     }

@@ -4,6 +4,12 @@ pragma solidity ^0.8.0;
 import "@gnosis.pm/safe-contracts/contracts/common/Enum.sol";
 
 interface IVetoERC20Voting {
+    event VetoVoteCast(
+        address indexed voter,
+        bytes32 indexed transactionHash,
+        uint256 votesCast
+    );
+
     function getIsVetoed(
         address to,
         uint256 value,

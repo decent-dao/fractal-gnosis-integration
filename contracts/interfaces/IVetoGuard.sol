@@ -19,6 +19,11 @@ interface IVetoGuard {
         address indexed gnosisSafe
     );
 
+    event TransactionQueued(
+      address indexed queuer,
+      bytes32 indexed transactionHash
+    );
+
     function getTransactionQueuedBlock(
         address to,
         uint256 value,

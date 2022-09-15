@@ -74,18 +74,15 @@ contract VetoGuard is
         bytes memory signatures
     ) external {
         bytes memory gnosisTransactionHash = gnosisSafe.encodeTransactionData(
-            // Transaction info
             to,
             value,
             data,
             operation,
             safeTxGas,
-            // Payment info
             baseGas,
             gasPrice,
             gasToken,
             refundReceiver,
-            // Signature info
             gnosisSafe.nonce()
         );
 
@@ -114,6 +111,8 @@ contract VetoGuard is
         );
 
         transactionQueuedBlock[transactionHash] = block.number;
+
+        emit TransactionQueued(msg.sender, transactionHash);
     }
 
     function checkTransaction(

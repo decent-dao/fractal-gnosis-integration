@@ -19,7 +19,7 @@ contract VetoERC20Voting is IVetoERC20Voting, TransactionHasher, Initializable {
         uint256 _vetoVotesThreshold,
         address _votesToken,
         address _vetoGuard
-    ) initializer public {
+    ) external initializer {
         vetoVotesThreshold = _vetoVotesThreshold;
         votesToken = IERC20Votes(_votesToken);
         vetoGuard = IVetoGuard(_vetoGuard);
@@ -55,23 +55,7 @@ contract VetoERC20Voting is IVetoERC20Voting, TransactionHasher, Initializable {
             "User has already voted"
         );
 
-        // Check that the transaction has been queued
-        require(
-            vetoGuard.getTransactionQueuedBlock(
-                to,
-                value,
-                data,
-                operation,
-                safeTxGas,
-                baseGas,
-                gasPrice,
-                gasToken,
-                refundReceiver
-            ) != 0,
-            "Transaction has not yet been queued"
-        );
-
-        // check the block number the transaction was queued on the VetoGuard
+        // Get the block number the transaction was queued on the VetoGuard
         uint256 queuedBlockNumber = vetoGuard.getTransactionQueuedBlock(
             to,
             value,
@@ -84,17 +68,21 @@ contract VetoERC20Voting is IVetoERC20Voting, TransactionHasher, Initializable {
             refundReceiver
         );
 
-        // get the number of the user's votes at that block
-        uint256 userVotes = votesToken.getPastVotes(
+        // Check that the transaction has been queued
+        require(queuedBlockNumber != 0, "Transaction has not yet been queued");
+
+        uint256 vetoVotes = votesToken.getPastVotes(
             msg.sender,
             queuedBlockNumber
         );
 
-        // Add votes to the data structure
-        transactionVetoVotes[transactionHash] += userVotes;
+        // Add the user votes to the veto vote count for this transaction
+        transactionVetoVotes[transactionHash] += vetoVotes;
 
         // User has voted
         userHasVoted[msg.sender][transactionHash] = true;
+
+        emit VetoVoteCast(msg.sender, transactionHash, vetoVotes);
     }
 
     function getIsVetoed(
@@ -108,20 +96,20 @@ contract VetoERC20Voting is IVetoERC20Voting, TransactionHasher, Initializable {
         address gasToken,
         address payable refundReceiver
     ) external view returns (bool) {
-        // Get the transaction hash
-        bytes32 transactionHash = getTransactionHash(
-            to,
-            value,
-            data,
-            operation,
-            safeTxGas,
-            baseGas,
-            gasPrice,
-            gasToken,
-            refundReceiver
-        );
-
-        return transactionVetoVotes[transactionHash] > vetoVotesThreshold;
+        return
+            transactionVetoVotes[
+                getTransactionHash(
+                    to,
+                    value,
+                    data,
+                    operation,
+                    safeTxGas,
+                    baseGas,
+                    gasPrice,
+                    gasToken,
+                    refundReceiver
+                )
+            ] > vetoVotesThreshold;
     }
 
     function getVetoVotes(
@@ -135,18 +123,19 @@ contract VetoERC20Voting is IVetoERC20Voting, TransactionHasher, Initializable {
         address gasToken,
         address payable refundReceiver
     ) external view returns (uint256) {
-        bytes32 transactionHash = getTransactionHash(
-            to,
-            value,
-            data,
-            operation,
-            safeTxGas,
-            baseGas,
-            gasPrice,
-            gasToken,
-            refundReceiver
-        );
-
-        return transactionVetoVotes[transactionHash];
+        return
+            transactionVetoVotes[
+                getTransactionHash(
+                    to,
+                    value,
+                    data,
+                    operation,
+                    safeTxGas,
+                    baseGas,
+                    gasPrice,
+                    gasToken,
+                    refundReceiver
+                )
+            ];
     }
 }

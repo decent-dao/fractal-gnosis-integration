@@ -290,7 +290,7 @@ describe.only("Gnosis Safe Veto Guard", () => {
     });
   });
 
-  it.only("A transaction cannot be queued if the signatures aren't valid", async () => {
+  it("A transaction cannot be queued if the signatures aren't valid", async () => {
     // Create transaction to set the guard address
     const tokenTransferData = votesToken.interface.encodeFunctionData(
       "transfer",

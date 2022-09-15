@@ -17,6 +17,7 @@ import {
   safeSignTypedData,
   ifaceSafe,
   abi,
+  predictGnosisSafeAddress,
 } from "./helpers";
 
 describe.only("Gnosis Safe Veto Guard", () => {
@@ -40,29 +41,6 @@ describe.only("Gnosis Safe Veto Guard", () => {
 
   // Gnosis
   let createGnosisSetupCalldata: string;
-
-  async function predictGnosisSafeAddress(
-    factory: string,
-    calldata: string,
-    saltNum: string | BigNumber,
-    singleton: string
-  ) {
-    return ethers.utils.getCreate2Address(
-      factory,
-      ethers.utils.solidityKeccak256(
-        ["bytes", "uint256"],
-        [ethers.utils.solidityKeccak256(["bytes"], [calldata]), saltNum]
-      ),
-      ethers.utils.solidityKeccak256(
-        ["bytes", "uint256"],
-        [
-          // eslint-disable-next-line camelcase
-          await gnosisFactory.proxyCreationCode(),
-          singleton,
-        ]
-      )
-    );
-  }
 
   const gnosisFactoryAddress = "0xa6B71E26C5e0845f74c812102Ca7114b6a896AB2";
   const gnosisSingletonAddress = "0xd9Db270c1B5E3Bd161E8c8503c55cEABeE709552";
@@ -114,7 +92,8 @@ describe.only("Gnosis Safe Veto Guard", () => {
       gnosisFactory.address,
       createGnosisSetupCalldata,
       saltNum,
-      gnosisSingletonAddress
+      gnosisSingletonAddress,
+      gnosisFactory
     );
 
     // Deploy Gnosis Safe

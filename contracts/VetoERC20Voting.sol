@@ -8,6 +8,7 @@ import "./TransactionHasher.sol";
 import "@fractal-framework/core-contracts/contracts/ModuleBase.sol";
 import "@gnosis.pm/safe-contracts/contracts/common/Enum.sol";
 
+/// @notice A contract for casting veto votes with an ERC20 votes token
 contract VetoERC20Voting is IVetoERC20Voting, TransactionHasher, ModuleBase {
     uint256 public vetoVotesThreshold;
     IERC20Votes public votesToken;
@@ -15,6 +16,11 @@ contract VetoERC20Voting is IVetoERC20Voting, TransactionHasher, ModuleBase {
     mapping(bytes32 => uint256) public transactionVetoVotes;
     mapping(address => mapping(bytes32 => bool)) public userHasVoted;
 
+  /// @notice Initializes the contract that can only be called once
+  /// @param _vetoVotesThreshold The number of votes required to veto a transaction
+  /// @param _votesToken The 
+  /// @param _vetoGuard The address of the VetoGuard contract
+  /// @param _accessControl The address of the access control contract
     function initialize(
         uint256 _vetoVotesThreshold,
         address _votesToken,
@@ -27,6 +33,16 @@ contract VetoERC20Voting is IVetoERC20Voting, TransactionHasher, ModuleBase {
         vetoGuard = IVetoGuard(_vetoGuard);
     }
 
+    /// @notice Allows the msg.sender to cast veto votes on the specified transaction
+    /// @param to Destination address.
+    /// @param value Ether value.
+    /// @param data Data payload.
+    /// @param operation Operation type.
+    /// @param safeTxGas Gas that should be used for the safe transaction.
+    /// @param baseGas Gas costs for that are independent of the transaction execution(e.g. base transaction fee, signature check, payment of the refund)
+    /// @param gasPrice Maximum gas price that should be used for this transaction.
+    /// @param gasToken Token address (or 0 if ETH) that is used for the payment.
+    /// @param refundReceiver Address of receiver of gas payment (or 0 if tx.origin).
     function castVetoVote(
         address to,
         uint256 value,
@@ -87,6 +103,17 @@ contract VetoERC20Voting is IVetoERC20Voting, TransactionHasher, ModuleBase {
         emit VetoVoteCast(msg.sender, transactionHash, vetoVotes);
     }
 
+    /// @notice Returns whether the specified functions has been vetoed
+    /// @param to Destination address.
+    /// @param value Ether value.
+    /// @param data Data payload.
+    /// @param operation Operation type.
+    /// @param safeTxGas Gas that should be used for the safe transaction.
+    /// @param baseGas Gas costs for that are independent of the transaction execution(e.g. base transaction fee, signature check, payment of the refund)
+    /// @param gasPrice Maximum gas price that should be used for this transaction.
+    /// @param gasToken Token address (or 0 if ETH) that is used for the payment.
+    /// @param refundReceiver Address of receiver of gas payment (or 0 if tx.origin).
+    /// @return bool True if the transaction is vetoed
     function getIsVetoed(
         address to,
         uint256 value,
@@ -114,6 +141,17 @@ contract VetoERC20Voting is IVetoERC20Voting, TransactionHasher, ModuleBase {
             ] > vetoVotesThreshold;
     }
 
+    /// @notice Returns the number of votes that have been cast to veto the specified transaction
+    /// @param to Destination address.
+    /// @param value Ether value.
+    /// @param data Data payload.
+    /// @param operation Operation type.
+    /// @param safeTxGas Gas that should be used for the safe transaction.
+    /// @param baseGas Gas costs for that are independent of the transaction execution(e.g. base transaction fee, signature check, payment of the refund)
+    /// @param gasPrice Maximum gas price that should be used for this transaction.
+    /// @param gasToken Token address (or 0 if ETH) that is used for the payment.
+    /// @param refundReceiver Address of receiver of gas payment (or 0 if tx.origin).
+    /// @return uint256 The number of veto votes that have been cast
     function getVetoVotes(
         address to,
         uint256 value,

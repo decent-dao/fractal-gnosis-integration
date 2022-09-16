@@ -137,8 +137,6 @@ contract VetoGuard is
     /// @param gasPrice Maximum gas price that should be used for this transaction.
     /// @param gasToken Token address (or 0 if ETH) that is used for the payment.
     /// @param refundReceiver Address of receiver of gas payment (or 0 if tx.origin).
-    /// @param signatures Packed signature data ({bytes32 r}{bytes32 s}{uint8 v})
-    /// @param msgSender The caller of the execTransaction function on the Gnosis Safe
     function checkTransaction(
         address to,
         uint256 value,
@@ -149,8 +147,8 @@ contract VetoGuard is
         uint256 gasPrice,
         address gasToken,
         address payable refundReceiver,
-        bytes memory signatures,
-        address msgSender
+        bytes memory,
+        address
     ) external view override {
         bytes32 transactionHash = getTransactionHash(
             to,

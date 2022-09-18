@@ -21,7 +21,8 @@ interface IVetoGuard {
 
     event TransactionQueued(
       address indexed queuer,
-      bytes32 indexed transactionHash
+      bytes32 indexed transactionHash,
+      bytes indexed signatures
     );
 
     /// @notice Gets the block number that the transaction was queued at

@@ -123,7 +123,7 @@ contract VetoGuard is
 
         transactionQueuedBlock[transactionHash] = block.number;
 
-        emit TransactionQueued(msg.sender, transactionHash);
+        emit TransactionQueued(msg.sender, transactionHash, signatures);
     }
 
     /// @notice This function is called by the Gnosis Safe to check if the transaction should be able to be executed

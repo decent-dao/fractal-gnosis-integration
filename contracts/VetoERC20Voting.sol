@@ -18,7 +18,7 @@ contract VetoERC20Voting is IVetoERC20Voting, TransactionHasher, ModuleBase {
 
   /// @notice Initializes the contract that can only be called once
   /// @param _vetoVotesThreshold The number of votes required to veto a transaction
-  /// @param _votesToken The 
+  /// @param _votesToken The address of the VotesToken contract
   /// @param _vetoGuard The address of the VetoGuard contract
   /// @param _accessControl The address of the access control contract
     function initialize(

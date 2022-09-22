@@ -24,6 +24,7 @@ import {
   predictGnosisSafeCallbackAddress,
   executeTx,
   safeApproveHash,
+  MetaTransaction,
 } from "./helpers";
 
 describe.only("Gnosis Safe", () => {
@@ -116,18 +117,40 @@ describe.only("Gnosis Safe", () => {
       "01";
 
     const abiCoder = new ethers.utils.AbiCoder(); // encode data
+    const createGnosisCalldata = abiCoder.encode(
+      [
+        "address[]",
+        "uint256",
+        "address",
+        "bytes",
+        "address",
+        "address",
+        "uint256",
+        "address",
+      ],
+      [
+        [owner1.address, owner2.address, owner3.address],
+        threshold,
+        ethers.constants.AddressZero,
+        ethers.constants.HashZero,
+        ethers.constants.AddressZero,
+        ethers.constants.AddressZero,
+        0,
+        ethers.constants.AddressZero,
+      ]
+    );
+
     const setGuardCalldata = ifaceSafe.encodeFunctionData("setGuard", [
       vetoGuard.address,
     ]);
-    const guardData = abiCoder.encode(
-      ["bytes", "bytes"],
-      [setGuardCalldata, sigs]
+    const txdata = abiCoder.encode(
+      ["address[]", "bytes[]"],
+      [
+        [ethers.constants.AddressZero, ethers.constants.AddressZero],
+        [createGnosisCalldata, setGuardCalldata],
+      ]
     );
-    const gnosisCallData = abiCoder.encode(
-      ["address[]", "uint256"],
-      [[callback.address], 1]
-    );
-    bytecode = abiCoder.encode(["bytes", "bytes"], [gnosisCallData, guardData]);
+    bytecode = abiCoder.encode(["bytes", "bytes"], [txdata, sigs]);
 
     // Predidct Gnosis Safe
     const predictedGnosisSafeAddress = await predictGnosisSafeCallbackAddress(
@@ -194,7 +217,7 @@ describe.only("Gnosis Safe", () => {
   });
 
   describe("Gnosis Safe with VetoGuard", () => {
-    it("Creating a safe emits an event setting up guard in one tx", async () => {
+    it("Creates a safe and emits changeGuard event", async () => {
       // Deploy Gnosis Safe
       await expect(
         gnosisFactory.createProxyWithCallback(

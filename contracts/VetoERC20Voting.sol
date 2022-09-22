@@ -1,17 +1,17 @@
 //SPDX-License-Identifier: Unlicense
 pragma solidity ^0.8.0;
 
-import "./interfaces/IERC20Votes.sol";
 import "./interfaces/IVetoGuard.sol";
 import "./interfaces/IVetoERC20Voting.sol";
 import "./TransactionHasher.sol";
 import "@gnosis.pm/safe-contracts/contracts/common/Enum.sol";
 import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
+import "@openzeppelin/contracts/governance/utils/IVotes.sol";
 
 /// @notice A contract for casting veto votes with an ERC20 votes token
 contract VetoERC20Voting is IVetoERC20Voting, TransactionHasher, Initializable {
     uint256 public vetoVotesThreshold;
-    IERC20Votes public votesToken;
+    IVotes public votesToken;
     IVetoGuard public vetoGuard;
     mapping(bytes32 => uint256) public transactionVetoVotes;
     mapping(address => mapping(bytes32 => bool)) public userHasVoted;
@@ -26,7 +26,7 @@ contract VetoERC20Voting is IVetoERC20Voting, TransactionHasher, Initializable {
         address _vetoGuard
     ) external initializer {
         vetoVotesThreshold = _vetoVotesThreshold;
-        votesToken = IERC20Votes(_votesToken);
+        votesToken = IVotes(_votesToken);
         vetoGuard = IVetoGuard(_vetoGuard);
     }
 

@@ -5,11 +5,11 @@ import "./interfaces/IERC20Votes.sol";
 import "./interfaces/IVetoGuard.sol";
 import "./interfaces/IVetoERC20Voting.sol";
 import "./TransactionHasher.sol";
-import "@fractal-framework/core-contracts/contracts/ModuleBase.sol";
 import "@gnosis.pm/safe-contracts/contracts/common/Enum.sol";
+import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 
 /// @notice A contract for casting veto votes with an ERC20 votes token
-contract VetoERC20Voting is IVetoERC20Voting, TransactionHasher, ModuleBase {
+contract VetoERC20Voting is IVetoERC20Voting, TransactionHasher, Initializable {
     uint256 public vetoVotesThreshold;
     IERC20Votes public votesToken;
     IVetoGuard public vetoGuard;
@@ -20,14 +20,11 @@ contract VetoERC20Voting is IVetoERC20Voting, TransactionHasher, ModuleBase {
   /// @param _vetoVotesThreshold The number of votes required to veto a transaction
   /// @param _votesToken The address of the VotesToken contract
   /// @param _vetoGuard The address of the VetoGuard contract
-  /// @param _accessControl The address of the access control contract
     function initialize(
         uint256 _vetoVotesThreshold,
         address _votesToken,
-        address _vetoGuard,
-        address _accessControl
+        address _vetoGuard
     ) external initializer {
-        __initBase(_accessControl, msg.sender, "Veto ERC20 Voting");
         vetoVotesThreshold = _vetoVotesThreshold;
         votesToken = IERC20Votes(_votesToken);
         vetoGuard = IVetoGuard(_vetoGuard);

@@ -18,6 +18,7 @@ import {
   ifaceSafe,
   abi,
   predictGnosisSafeAddress,
+  abiSafe,
 } from "./helpers";
 
 describe("Gnosis Safe", () => {
@@ -107,9 +108,10 @@ describe("Gnosis Safe", () => {
     );
 
     // Get Gnosis Safe contract
-    gnosisSafe = await ethers.getContractAt(
-      "GnosisSafe",
-      predictedGnosisSafeAddress
+    gnosisSafe = new ethers.Contract(
+      predictedGnosisSafeAddress,
+      abiSafe,
+      deployer
     );
 
     // Deploy token, allocate supply to two token vetoers and Gnosis Safe

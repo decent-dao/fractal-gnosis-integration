@@ -51,7 +51,7 @@ contract VetoERC20Voting is IVetoERC20Voting, TransactionHasher, Initializable {
 
         uint256 vetoVotes = votesToken.getPastVotes(
             msg.sender,
-            queuedBlockNumber
+            queuedBlockNumber - 1
         );
 
         // Add the user votes to the veto vote count for this transaction

@@ -123,6 +123,7 @@ export const iface = new Interface([
 
 export const ifaceSafe = new Interface([
   "function setup(address[] calldata _owners,uint256 _threshold,address to,bytes calldata data,address fallbackHandler,address paymentToken,uint256 payment,address payable paymentReceiver)",
+  "function execTransaction(address to,uint256 value,bytes calldata data,uint8 operation,uint256 safeTxGas,uint256 baseGas,uint256 gasPrice,address gasToken,address payable refundReceiver,bytes memory signatures) public payable returns (bool success)",
   "function setGuard(address guard) external",
   "function enableModule(address module) public",
 ]);
@@ -139,6 +140,7 @@ export const abi = [
 
 export const abiSafe = [
   "event ExecutionSuccess(bytes32 txHash, uint256 payment)",
+  "event ChangedGuard(address guard)",
   "event SafeSetup(address indexed initiator, address[] owners, uint256 threshold, address initializer, address fallbackHandler)",
   "function getOwners() public view returns (address[] memory)",
   "function nonce() public view returns (uint256)",

@@ -38,7 +38,6 @@ describe("Gnosis Safe", () => {
   let tokenVetoer1: SignerWithAddress;
   let tokenVetoer2: SignerWithAddress;
   let vetoGuardOwner: SignerWithAddress;
-  let mockAccessControl: SignerWithAddress;
 
   // Gnosis
   let createGnosisSetupCalldata: string;
@@ -74,7 +73,6 @@ describe("Gnosis Safe", () => {
       tokenVetoer1,
       tokenVetoer2,
       vetoGuardOwner,
-      mockAccessControl,
     ] = await ethers.getSigners();
 
     // Get deployed Gnosis Safe
@@ -139,8 +137,7 @@ describe("Gnosis Safe", () => {
     await vetoERC20Voting.initialize(
       1000,
       votesToken.address,
-      vetoGuard.address,
-      mockAccessControl.address
+      vetoGuard.address
     );
 
     // Create transaction to set the guard address

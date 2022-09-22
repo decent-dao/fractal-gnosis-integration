@@ -389,20 +389,20 @@ describe("Gnosis Safe", () => {
       signatureBytes
     );
 
+    const txHash = await vetoERC20Voting.getTransactionHash(
+      tx.to,
+      tx.value,
+      tx.data,
+      tx.operation,
+      tx.safeTxGas,
+      tx.baseGas,
+      tx.gasPrice,
+      tx.gasToken,
+      tx.refundReceiver
+    );
+
     // Vetoer 1 casts 500 veto votes
-    await vetoERC20Voting
-      .connect(tokenVetoer1)
-      .castVetoVote(
-        tx.to,
-        tx.value,
-        tx.data,
-        tx.operation,
-        tx.safeTxGas,
-        tx.baseGas,
-        tx.gasPrice,
-        tx.gasToken,
-        tx.refundReceiver
-      );
+    await vetoERC20Voting.connect(tokenVetoer1).castVetoVote(txHash);
 
     // 500 veto votes have been cast
     expect(
@@ -488,35 +488,23 @@ describe("Gnosis Safe", () => {
       signatureBytes
     );
 
+    const txHash = await vetoERC20Voting.getTransactionHash(
+      tx.to,
+      tx.value,
+      tx.data,
+      tx.operation,
+      tx.safeTxGas,
+      tx.baseGas,
+      tx.gasPrice,
+      tx.gasToken,
+      tx.refundReceiver
+    );
+
     // Vetoer 1 casts 500 veto votes
-    await vetoERC20Voting
-      .connect(tokenVetoer1)
-      .castVetoVote(
-        tx.to,
-        tx.value,
-        tx.data,
-        tx.operation,
-        tx.safeTxGas,
-        tx.baseGas,
-        tx.gasPrice,
-        tx.gasToken,
-        tx.refundReceiver
-      );
+    await vetoERC20Voting.connect(tokenVetoer1).castVetoVote(txHash);
 
     // Vetoer 2 casts 600 veto votes
-    await vetoERC20Voting
-      .connect(tokenVetoer2)
-      .castVetoVote(
-        tx.to,
-        tx.value,
-        tx.data,
-        tx.operation,
-        tx.safeTxGas,
-        tx.baseGas,
-        tx.gasPrice,
-        tx.gasToken,
-        tx.refundReceiver
-      );
+    await vetoERC20Voting.connect(tokenVetoer2).castVetoVote(txHash);
 
     // 1100 veto votes have been cast
     expect(
@@ -601,35 +589,23 @@ describe("Gnosis Safe", () => {
       signatureBytes
     );
 
+    const txHash = await vetoERC20Voting.getTransactionHash(
+      tx.to,
+      tx.value,
+      tx.data,
+      tx.operation,
+      tx.safeTxGas,
+      tx.baseGas,
+      tx.gasPrice,
+      tx.gasToken,
+      tx.refundReceiver
+    );
+
     // Vetoer 1 casts 500 veto votes
-    await vetoERC20Voting
-      .connect(tokenVetoer1)
-      .castVetoVote(
-        tx.to,
-        tx.value,
-        tx.data,
-        tx.operation,
-        tx.safeTxGas,
-        tx.baseGas,
-        tx.gasPrice,
-        tx.gasToken,
-        tx.refundReceiver
-      );
+    await vetoERC20Voting.connect(tokenVetoer1).castVetoVote(txHash);
 
     await expect(
-      vetoERC20Voting
-        .connect(tokenVetoer1)
-        .castVetoVote(
-          tx.to,
-          tx.value,
-          tx.data,
-          tx.operation,
-          tx.safeTxGas,
-          tx.baseGas,
-          tx.gasPrice,
-          tx.gasToken,
-          tx.refundReceiver
-        )
+      vetoERC20Voting.connect(tokenVetoer1).castVetoVote(txHash)
     ).to.be.revertedWith("User has already voted");
   });
 
@@ -647,20 +623,20 @@ describe("Gnosis Safe", () => {
       nonce: await gnosisSafe.nonce(),
     });
 
+    const txHash = await vetoERC20Voting.getTransactionHash(
+      tx.to,
+      tx.value,
+      tx.data,
+      tx.operation,
+      tx.safeTxGas,
+      tx.baseGas,
+      tx.gasPrice,
+      tx.gasToken,
+      tx.refundReceiver
+    );
+
     await expect(
-      vetoERC20Voting
-        .connect(tokenVetoer1)
-        .castVetoVote(
-          tx.to,
-          tx.value,
-          tx.data,
-          tx.operation,
-          tx.safeTxGas,
-          tx.baseGas,
-          tx.gasPrice,
-          tx.gasToken,
-          tx.refundReceiver
-        )
+      vetoERC20Voting.connect(tokenVetoer1).castVetoVote(txHash)
     ).to.be.revertedWith("Transaction has not yet been queued");
   });
 });

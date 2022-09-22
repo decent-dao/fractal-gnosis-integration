@@ -5,10 +5,10 @@ import "@gnosis.pm/safe-contracts/contracts/common/Enum.sol";
 
 interface IVetoGuard {
     enum TransactionState {
-        pending, // 0
-        queued, // 1
-        readyToExecute, // 2
-        vetoed // 3
+        pending,
+        queued,
+        readyToExecute,
+        vetoed
     }
 
     event VetoGuardSetup(

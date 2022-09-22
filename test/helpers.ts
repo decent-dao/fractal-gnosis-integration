@@ -36,6 +36,37 @@ export const predictGnosisSafeAddress = async (
   );
 };
 
+export const predictGnosisSafeCallbackAddress = async (
+  factory: string,
+  calldata: string,
+  saltNum: string | BigNumber,
+  callback: string,
+  singleton: string,
+  gnosisFactory: Contract
+): Promise<string> => {
+  return ethers.utils.getCreate2Address(
+    factory,
+    ethers.utils.solidityKeccak256(
+      ["bytes", "bytes"],
+      [
+        ethers.utils.solidityKeccak256(["bytes"], [calldata]),
+        ethers.utils.solidityKeccak256(
+          ["uint256", "address"],
+          [saltNum, callback]
+        ),
+      ]
+    ),
+    ethers.utils.solidityKeccak256(
+      ["bytes", "uint256"],
+      [
+        // eslint-disable-next-line camelcase
+        await gnosisFactory.proxyCreationCode(),
+        singleton,
+      ]
+    )
+  );
+};
+
 export const EIP_DOMAIN = {
   EIP712Domain: [
     { type: "uint256", name: "chainId" },
@@ -87,10 +118,13 @@ export interface SafeSignature {
 
 export const iface = new Interface([
   "function createProxyWithNonce(address _singleton, bytes memory initializer, uint256 saltNonce) returns (GnosisSafeProxy proxy)",
+  "function createProxyWithCallback(address _singleton,bytes memory initializer,uint256 saltNonce,address callback) public returns (address proxy)",
 ]);
 
 export const ifaceSafe = new Interface([
   "function setup(address[] calldata _owners,uint256 _threshold,address to,bytes calldata data,address fallbackHandler,address paymentToken,uint256 payment,address payable paymentReceiver)",
+  "function setGuard(address guard) external",
+  "function enableModule(address module) public",
 ]);
 
 export const abi = [
@@ -99,7 +133,7 @@ export const abi = [
   "function proxyRuntimeCode() public pure returns (bytes memory)",
   "function proxyCreationCode() public pure returns (bytes memory)",
   "function createProxyWithNonce(address _singleton,bytes memory initializer,uint256 saltNonce) returns (address proxy)",
-  "function createProxyWithCallback(address _singleton,bytes memory initializer,uint256 saltNonce,IProxyCreationCallback callback) public returns (GnosisSafeProxy proxy)",
+  "function createProxyWithCallback(address _singleton,bytes memory initializer,uint256 saltNonce,address callback) public returns (address proxy)",
   "function calculateCreateProxyWithNonceAddress(address _singleton,bytes calldata initializer,uint256 saltNonce) external returns (address proxy)",
 ];
 
@@ -110,9 +144,12 @@ export const abiSafe = [
   "function nonce() public view returns (uint256)",
   "function isOwner(address owner) public view returns (bool)",
   "function getThreshold() public view returns (uint256)",
+  "function getGuard() internal view returns (address guard)",
   "function setup(address[] calldata _owners,uint256 _threshold,address to,bytes calldata data,address fallbackHandler,address paymentToken,uint256 payment,address payable paymentReceiver)",
   "function execTransaction(address to,uint256 value,bytes calldata data,uint8 operation,uint256 safeTxGas,uint256 baseGas,uint256 gasPrice,address gasToken,address payable refundReceiver,bytes memory signatures) public payable returns (bool success)",
   "function getTransactionHash(address to,uint256 value,bytes calldata data,uint8 operation,uint256 safeTxGas,uint256 baseGas,uint256 gasPrice,address gasToken,address refundReceiver,uint256 _nonce) public view returns (bytes32)",
+  "function setGuard(address guard) external",
+  "function enableModule(address module) public",
 ];
 
 export const calculateSafeDomainSeparator = (

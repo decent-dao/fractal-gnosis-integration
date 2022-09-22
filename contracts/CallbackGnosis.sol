@@ -42,10 +42,8 @@ contract CallbackGnosis {
     }
 
     function initSetup(address proxy, bytes memory setupData) public {
-        address[] memory callback = new address[](1);
-        callback[0] = address(this);
         (
-            ,
+            address[] memory owners,
             ,
             ,
             ,
@@ -66,8 +64,9 @@ contract CallbackGnosis {
                     address
                 )
             );
+
         IGnosisSafe(proxy).setup(
-            callback,
+            owners,
             1,
             address(0),
             "",

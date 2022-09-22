@@ -34,56 +34,19 @@ contract VetoERC20Voting is IVetoERC20Voting, TransactionHasher, ModuleBase {
     }
 
     /// @notice Allows the msg.sender to cast veto votes on the specified transaction
-    /// @param to Destination address.
-    /// @param value Ether value.
-    /// @param data Data payload.
-    /// @param operation Operation type.
-    /// @param safeTxGas Gas that should be used for the safe transaction.
-    /// @param baseGas Gas costs for that are independent of the transaction execution(e.g. base transaction fee, signature check, payment of the refund)
-    /// @param gasPrice Maximum gas price that should be used for this transaction.
-    /// @param gasToken Token address (or 0 if ETH) that is used for the payment.
-    /// @param refundReceiver Address of receiver of gas payment (or 0 if tx.origin).
+    /// @param _transactionHash The hash of the transaction data
     function castVetoVote(
-        address to,
-        uint256 value,
-        bytes memory data,
-        Enum.Operation operation,
-        uint256 safeTxGas,
-        uint256 baseGas,
-        uint256 gasPrice,
-        address gasToken,
-        address payable refundReceiver
+        bytes32 _transactionHash
     ) external {
-        // Get the transaction hash
-        bytes32 transactionHash = getTransactionHash(
-            to,
-            value,
-            data,
-            operation,
-            safeTxGas,
-            baseGas,
-            gasPrice,
-            gasToken,
-            refundReceiver
-        );
-
         // Check that user has not yet voted
         require(
-            !userHasVoted[msg.sender][transactionHash],
+            !userHasVoted[msg.sender][_transactionHash],
             "User has already voted"
         );
 
         // Get the block number the transaction was queued on the VetoGuard
         uint256 queuedBlockNumber = vetoGuard.getTransactionQueuedBlock(
-            to,
-            value,
-            data,
-            operation,
-            safeTxGas,
-            baseGas,
-            gasPrice,
-            gasToken,
-            refundReceiver
+            _transactionHash
         );
 
         // Check that the transaction has been queued
@@ -95,12 +58,12 @@ contract VetoERC20Voting is IVetoERC20Voting, TransactionHasher, ModuleBase {
         );
 
         // Add the user votes to the veto vote count for this transaction
-        transactionVetoVotes[transactionHash] += vetoVotes;
+        transactionVetoVotes[_transactionHash] += vetoVotes;
 
         // User has voted
-        userHasVoted[msg.sender][transactionHash] = true;
+        userHasVoted[msg.sender][_transactionHash] = true;
 
-        emit VetoVoteCast(msg.sender, transactionHash, vetoVotes);
+        emit VetoVoteCast(msg.sender, _transactionHash, vetoVotes);
     }
 
     /// @notice Returns whether the specified functions has been vetoed

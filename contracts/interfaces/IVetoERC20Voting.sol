@@ -10,6 +10,12 @@ interface IVetoERC20Voting {
         uint256 votesCast
     );
 
+    /// @notice Allows the msg.sender to cast veto votes on the specified transaction
+    /// @param _transactionHash The hash of the transaction data
+    function castVetoVote(
+        bytes32 _transactionHash
+    ) external;
+
     /// @notice Returns whether the specified functions has been vetoed
     /// @param to Destination address.
     /// @param value Ether value.

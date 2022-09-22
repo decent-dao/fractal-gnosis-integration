@@ -9,6 +9,8 @@ import {
   VetoERC20Voting__factory,
   VetoGuard,
   VetoGuard__factory,
+  MockVetoGuard__factory,
+  MockVetoGuard,
 } from "../typechain-types";
 import { CallbackGnosis } from "../typechain-types/contracts/CallbackGnosis";
 import { CallbackGnosis__factory } from "../typechain-types/factories/contracts/CallbackGnosis__factory";
@@ -33,7 +35,7 @@ describe.only("Gnosis Safe", () => {
 
   // Deployed contracts
   let gnosisSafe: Contract;
-  let vetoGuard: VetoGuard;
+  let vetoGuard: MockVetoGuard;
   let vetoERC20Voting: VetoERC20Voting;
   let votesToken: VotesToken;
 
@@ -91,7 +93,7 @@ describe.only("Gnosis Safe", () => {
 
     // Deploy VetoGuard contract with a 10 block delay between queuing and execution
     // todo: this should be deployed by the callback contract
-    vetoGuard = await new VetoGuard__factory(deployer).deploy(
+    vetoGuard = await new MockVetoGuard__factory(deployer).deploy(
       vetoGuardOwner.address,
       10,
       owner1.address,
@@ -99,16 +101,16 @@ describe.only("Gnosis Safe", () => {
     );
 
     // Init Setup
-    // createGnosisSetupCalldata = ifaceSafe.encodeFunctionData("setup", [
-    //   [callback.address],
-    //   1,
-    //   ethers.constants.AddressZero,
-    //   ethers.constants.HashZero,
-    //   ethers.constants.AddressZero,
-    //   ethers.constants.AddressZero,
-    //   0,
-    //   ethers.constants.AddressZero,
-    // ]);
+    createGnosisSetupCalldata = ifaceSafe.encodeFunctionData("setup", [
+      [owner1.address, owner2.address, owner3.address, callback.address],
+      1,
+      ethers.constants.AddressZero,
+      ethers.constants.HashZero,
+      ethers.constants.AddressZero,
+      ethers.constants.AddressZero,
+      0,
+      ethers.constants.AddressZero,
+    ]);
 
     const sigs =
       "0x000000000000000000000000" +
@@ -129,7 +131,7 @@ describe.only("Gnosis Safe", () => {
         "address",
       ],
       [
-        [owner1.address, owner2.address, owner3.address],
+        [owner1.address, owner2.address, owner3.address, callback.address],
         threshold,
         ethers.constants.AddressZero,
         ethers.constants.HashZero,
@@ -143,11 +145,21 @@ describe.only("Gnosis Safe", () => {
     const setGuardCalldata = ifaceSafe.encodeFunctionData("setGuard", [
       vetoGuard.address,
     ]);
+
+    const removeOwner = ifaceSafe.encodeFunctionData("removeOwner", [
+      owner3.address,
+      callback.address,
+      threshold,
+    ]);
     const txdata = abiCoder.encode(
       ["address[]", "bytes[]"],
       [
-        [ethers.constants.AddressZero, ethers.constants.AddressZero],
-        [createGnosisCalldata, setGuardCalldata],
+        [
+          ethers.constants.AddressZero,
+          ethers.constants.AddressZero, // setGuard
+          ethers.constants.AddressZero, // remove owner + threshold
+        ],
+        [createGnosisCalldata, setGuardCalldata, removeOwner],
       ]
     );
     bytecode = abiCoder.encode(["bytes", "bytes"], [txdata, sigs]);
@@ -219,16 +231,17 @@ describe.only("Gnosis Safe", () => {
   describe("Gnosis Safe with VetoGuard", () => {
     it("Creates a safe and emits changeGuard event", async () => {
       // Deploy Gnosis Safe
-      await expect(
-        gnosisFactory.createProxyWithCallback(
-          gnosisSingletonAddress,
-          bytecode,
-          saltNum,
-          callback.address
-        )
-      )
-        .to.emit(gnosisSafe, "ChangedGuard")
-        .withArgs(vetoGuard.address);
+      await gnosisFactory.createProxyWithCallback(
+        gnosisSingletonAddress,
+        bytecode,
+        saltNum,
+        callback.address
+      );
+      expect(await gnosisSafe.isOwner(owner1.address)).eq(true);
+      expect(await gnosisSafe.isOwner(owner2.address)).eq(true);
+      expect(await gnosisSafe.isOwner(owner3.address)).eq(true);
+      expect(await gnosisSafe.isOwner(callback.address)).eq(false);
+      expect(await gnosisSafe.getThreshold()).eq(threshold);
     });
   });
 });

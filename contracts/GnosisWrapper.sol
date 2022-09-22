@@ -2,7 +2,7 @@
 pragma solidity ^0.8.0;
 
 import "@fractal-framework/core-contracts/contracts/ModuleBase.sol";
-import "./IGnosisWrapper.sol";
+import "./interfaces/IGnosisWrapper.sol";
 
 contract GnosisWrapper is ModuleBase {
     address public gnosisSafe;

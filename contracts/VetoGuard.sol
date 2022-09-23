@@ -21,21 +21,6 @@ contract VetoGuard is
     IGnosisSafe public gnosisSafe;
     mapping(bytes32 => uint256) transactionQueuedBlock;
 
-    constructor(
-        address _owner,
-        uint256 _executionDelayBlocks,
-        address _vetoERC20Voting,
-        address _gnosisSafe
-    ) {
-        bytes memory initializeParams = abi.encode(
-            _executionDelayBlocks,
-            _owner,
-            _vetoERC20Voting,
-            _gnosisSafe
-        );
-        setUp(initializeParams);
-    }
-
     /// @notice Initialize function, will be triggered when a new proxy is deployed
     /// @param initializeParams Parameters of initialization encoded
     function setUp(bytes memory initializeParams) public override initializer {
@@ -43,21 +28,20 @@ contract VetoGuard is
         (
             uint256 _executionDelayBlocks,
             address _owner,
-            address _vetoERC20Voting,
-            address _gnosisSafe
-        ) = abi.decode(initializeParams, (uint256, address, address, address));
+            address _vetoERC20Voting
+        ) = abi.decode(initializeParams, (uint256, address, address));
 
         executionDelayBlocks = _executionDelayBlocks;
         transferOwnership(_owner);
         vetoERC20Voting = IVetoERC20Voting(_vetoERC20Voting);
-        gnosisSafe = IGnosisSafe(_gnosisSafe);
+        gnosisSafe = IGnosisSafe(msg.sender);
 
         emit VetoGuardSetup(
             msg.sender,
             _executionDelayBlocks,
             _owner,
             _vetoERC20Voting,
-            _gnosisSafe
+            msg.sender
         );
     }
 
@@ -150,6 +134,8 @@ contract VetoGuard is
         bytes memory,
         address
     ) external view override {
+        if (executionDelayBlocks == 0 && address(vetoERC20Voting) == address(0))
+            return;
         bytes32 transactionHash = getTransactionHash(
             to,
             value,

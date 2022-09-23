@@ -1,7 +1,5 @@
 pragma solidity ^0.8.0;
 import "./interfaces/IProxyCreationCallback.sol";
-import "./interfaces/IGnosisSafe.sol";
-import "@gnosis.pm/safe-contracts/contracts/common/Enum.sol";
 import "hardhat/console.sol";
 
 contract CallbackGnosis {
@@ -16,64 +14,36 @@ contract CallbackGnosis {
             (bytes, bytes)
         );
 
-        (address[] memory to, bytes[] memory data) = abi.decode(
-            txData,
-            (address[], bytes[])
-        );
-
-        for (uint256 i; i < to.length; i++) {
-            if (i == 0) {
-                initSetup(proxy, data[0]);
-            } else {
-                IGnosisSafe(proxy).execTransaction(
-                    to[i] == address(0) ? proxy : to[i],
-                    0,
-                    data[i],
-                    Enum.Operation.Call,
-                    0,
-                    0,
-                    0,
-                    address(0),
-                    payable(0),
-                    signature
+        (
+            address[] memory targets,
+            bytes[] memory datas,
+            bool[] memory gnosisExecTx
+        ) = abi.decode(txData, (address[], bytes[], bool[]));
+        // I should send multiple tx - same time
+        for (uint256 i; i < targets.length; i++) {
+            if (gnosisExecTx[i]) {
+                (bool success, ) = address(proxy).call(
+                    abi.encodeWithSignature(
+                        "execTransaction(address,uint256,bytes,uint8,uint256,uint256,uint256,address,address,bytes)",
+                        targets[i] == address(0) ? proxy : targets[i],
+                        0,
+                        datas[i],
+                        0,
+                        0,
+                        0,
+                        0,
+                        address(0),
+                        payable(0),
+                        signature
+                    )
                 );
+                require(success, "CB000");
+            } else {
+                (bool success, ) = address(
+                    targets[i] == address(0) ? proxy : targets[i]
+                ).call(datas[i]);
+                require(success, "CB000");
             }
         }
-    }
-
-    function initSetup(address proxy, bytes memory setupData) public {
-        (
-            address[] memory owners,
-            ,
-            ,
-            ,
-            address fallbackHandler,
-            address paymentToken,
-            uint256 payment,
-            address paymentReceiver
-        ) = abi.decode(
-                setupData,
-                (
-                    address[],
-                    uint256,
-                    address,
-                    bytes,
-                    address,
-                    address,
-                    uint256,
-                    address
-                )
-            );
-
-        IGnosisSafe(proxy).setup(
-            owners,
-            1,
-            address(0),
-            "",
-            fallbackHandler,
-            paymentToken,
-            payment,
-            payable(paymentReceiver)
-        );
     }
 }

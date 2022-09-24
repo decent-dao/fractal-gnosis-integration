@@ -8,6 +8,7 @@ import "./TransactionHasher.sol";
 import "@gnosis.pm/zodiac/contracts/guard/BaseGuard.sol";
 import "@gnosis.pm/zodiac/contracts/factory/FactoryFriendly.sol";
 import "@gnosis.pm/safe-contracts/contracts/common/Enum.sol";
+import "hardhat/console.sol";
 
 /// @notice A guard contract that prevents transactions that have been vetoed from being executed on the Gnosis Safe
 contract VetoGuard is
@@ -40,8 +41,7 @@ contract VetoGuard is
             msg.sender,
             _executionDelayBlocks,
             _owner,
-            _vetoERC20Voting,
-            msg.sender
+            _vetoERC20Voting
         );
     }
 

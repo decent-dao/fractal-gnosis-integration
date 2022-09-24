@@ -130,7 +130,7 @@ describe.only("Gnosis Safe", () => {
     // INIT GUARD
     const initParams = abiCoder.encode(
       ["uint256", "address", "address"],
-      [10, vetoGuard.address, owner1.address]
+      [10, owner1.address, owner1.address]
     );
 
     const initGuard = vetoGuard.interface.encodeFunctionData("setUp", [
@@ -139,23 +139,25 @@ describe.only("Gnosis Safe", () => {
 
     // TX Array
     const txdata = abiCoder.encode(
-      ["address[]", "bytes[]", "bool[]"],
+      ["address[][]", "bytes[][]", "bool[]"],
       [
         [
-          ethers.constants.AddressZero,
-          vetoGuardFactory.address,
-          ethers.constants.AddressZero, // setGuard
-          ethers.constants.AddressZero, // remove owner + threshold
-          vetoGuard.address,
+          [ethers.constants.AddressZero],
+          [
+            vetoGuardFactory.address, // deploy Guard
+          ],
+          [
+            ethers.constants.AddressZero, // setGuard Gnosis
+            ethers.constants.AddressZero, // remove owner + threshold
+            vetoGuard.address, // setup Guard
+          ],
         ],
         [
-          createGnosisCalldata,
-          createGuardCalldata,
-          setGuardCalldata,
-          removeCalldata,
-          initGuard,
+          [createGnosisCalldata],
+          [createGuardCalldata],
+          [setGuardCalldata, removeCalldata, initGuard],
         ],
-        [false, false, true, true, false],
+        [false, false, true],
       ]
     );
     bytecode = abiCoder.encode(["bytes", "bytes"], [txdata, sigs]);
@@ -182,16 +184,19 @@ describe.only("Gnosis Safe", () => {
     it("Creates a safe and emits changeGuard event", async () => {
       // Deploy Gnosis Safe
       await expect(
-        await gnosisFactory.createProxyWithCallback(
+        gnosisFactory.createProxyWithCallback(
           gnosisSingletonAddress,
           bytecode,
           saltNum,
           callback.address
         )
-      ).to.emit(gnosisSafe, "ChangedGuard");
+      )
+        .to.emit(gnosisSafe, "ChangedGuard")
+        .withArgs(vetoGuard.address);
 
       expect(await vetoGuard.executionDelayBlocks()).eq(10);
-      // expect(await vetoGuard.gnosisSafe()).eq(gnosisSafe.address);
+      expect(await vetoGuard.vetoERC20Voting()).eq(owner1.address);
+      expect(await vetoGuard.gnosisSafe()).eq(gnosisSafe.address);
       expect(await gnosisSafe.isOwner(owner1.address)).eq(true);
       expect(await gnosisSafe.isOwner(owner2.address)).eq(true);
       expect(await gnosisSafe.isOwner(owner3.address)).eq(true);

@@ -5,6 +5,7 @@ import "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";
 import "@openzeppelin/contracts/utils/Create2.sol";
 import "./VetoGuard.sol";
 import "@fractal-framework/core-contracts/contracts/ModuleFactoryBase.sol";
+import "hardhat/console.sol";
 
 /// @dev GnosisWrapper Factory used to deploy Gnosis Modules
 contract VetoGuardFactory is ModuleFactoryBase {

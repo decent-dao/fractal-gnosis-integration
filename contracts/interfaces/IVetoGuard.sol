@@ -15,14 +15,13 @@ interface IVetoGuard {
         address creator,
         uint256 executionDelayBlocks,
         address indexed owner,
-        address indexed vetoERC20Voting,
-        address indexed gnosisSafe
+        address indexed vetoERC20Voting
     );
 
     event TransactionQueued(
-      address indexed queuer,
-      bytes32 indexed transactionHash,
-      bytes indexed signatures
+        address indexed queuer,
+        bytes32 indexed transactionHash,
+        bytes indexed signatures
     );
 
     /// @notice Gets the block number that the transaction was queued at

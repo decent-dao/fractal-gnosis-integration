@@ -204,9 +204,24 @@ describe.only("Gnosis Safe", () => {
       )
         .to.emit(gnosisSafe, "ChangedGuard")
         .withArgs(vetoGuard.address);
-      expect(await vetoGuard.executionDelayBlocks()).eq(10);
-      expect(await vetoGuard.vetoERC20Voting()).eq(owner1.address);
-      expect(await vetoGuard.gnosisSafe()).eq(gnosisSafe.address);
+    });
+
+    it("Setup Gnosis Safe w/ removedOwner event", async () => {
+      await expect(
+        gnosisFactory.createProxyWithCallback(
+          gnosisSingletonAddress,
+          bytecode,
+          saltNum,
+          callback.address
+        )
+      )
+        .to.emit(gnosisSafe, "RemovedOwner")
+        .withArgs(vetoGuard.address);
+      expect(await gnosisSafe.isOwner(owner1.address)).eq(true);
+      expect(await gnosisSafe.isOwner(owner2.address)).eq(true);
+      expect(await gnosisSafe.isOwner(owner3.address)).eq(true);
+      expect(await gnosisSafe.isOwner(callback.address)).eq(false);
+      expect(await gnosisSafe.getThreshold()).eq(threshold);
     });
   });
 });

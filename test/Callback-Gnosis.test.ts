@@ -2,11 +2,7 @@ import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/signers";
 import { expect } from "chai";
 import { BigNumber, Contract } from "ethers";
 import { ethers, network } from "hardhat";
-import {
-  VetoGuard,
-  VetoGuard__factory,
-  VetoGuardFactory,
-} from "../typechain-types";
+import { VetoGuard, VetoGuard__factory } from "../typechain-types";
 import { CallbackGnosis } from "../typechain-types/contracts/CallbackGnosis";
 import { CallbackGnosis__factory } from "../typechain-types/factories/contracts/CallbackGnosis__factory";
 import { VetoGuardFactory__factory } from "../typechain-types/factories/contracts/VetoGuardFactory__factory";
@@ -16,6 +12,9 @@ import {
   abi,
   abiSafe,
   predictGnosisSafeCallbackAddress,
+  ifaceFactory,
+  calculateProxyAddress,
+  abiFactory,
 } from "./helpers";
 
 describe.only("Gnosis Safe", () => {
@@ -24,8 +23,9 @@ describe.only("Gnosis Safe", () => {
 
   // Deployed contracts
   let gnosisSafe: Contract;
+  let moduleFactory: Contract;
   let vetoGuard: VetoGuard;
-  let vetoGuardFactory: VetoGuardFactory;
+  let vetoImpl: VetoGuard;
   let callback: CallbackGnosis;
 
   // Wallets
@@ -37,7 +37,6 @@ describe.only("Gnosis Safe", () => {
   const gnosisFactoryAddress = "0xa6B71E26C5e0845f74c812102Ca7114b6a896AB2";
   const gnosisSingletonAddress = "0xd9Db270c1B5E3Bd161E8c8503c55cEABeE709552";
   const threshold = 2;
-  let setGuardCalldata: string;
   let predictedVetoGuard: string;
   let bytecode: string;
   const saltNum = BigNumber.from(
@@ -54,7 +53,6 @@ describe.only("Gnosis Safe", () => {
             jsonRpcUrl: process.env.GOERLI_PROVIDER
               ? process.env.GOERLI_PROVIDER
               : "",
-            blockNumber: 7387621,
           },
         },
       ],
@@ -62,36 +60,17 @@ describe.only("Gnosis Safe", () => {
 
     [deployer, owner1, owner2, owner3] = await ethers.getSigners();
 
-    const { chainId } = await ethers.provider.getNetwork();
     const abiCoder = new ethers.utils.AbiCoder(); // encode data
 
     gnosisFactory = new ethers.Contract(gnosisFactoryAddress, abi, deployer); // Gnosis Factory
-    callback = await new CallbackGnosis__factory(deployer).deploy(); // Gnosis Callback
-
-    // Deploy VetoGuardFactory
-    vetoGuardFactory = await new VetoGuardFactory__factory(deployer).deploy();
-    predictedVetoGuard = ethers.utils.getCreate2Address(
-      vetoGuardFactory.address,
-      ethers.utils.solidityKeccak256(
-        ["uint256", "bytes32"],
-        [chainId, ethers.utils.formatBytes32String("salt")]
-      ),
-      ethers.utils.solidityKeccak256(
-        ["bytes"],
-        [
-          // eslint-disable-next-line camelcase
-          VetoGuard__factory.bytecode,
-        ]
-      )
+    moduleFactory = new ethers.Contract(
+      "0x00000000000DC7F163742Eb4aBEf650037b1f588",
+      // eslint-disable-next-line camelcase
+      abiFactory,
+      deployer
     );
 
-    vetoGuard = await ethers.getContractAt("VetoGuard", predictedVetoGuard);
-
-    const sigs =
-      "0x000000000000000000000000" +
-      callback.address.slice(2) +
-      "0000000000000000000000000000000000000000000000000000000000000000" +
-      "01";
+    callback = await new CallbackGnosis__factory(deployer).deploy(); // Gnosis Callback
 
     // Setup GNOSIS
     const createGnosisCalldata = ifaceSafe.encodeFunctionData("setup", [
@@ -106,17 +85,30 @@ describe.only("Gnosis Safe", () => {
     ]);
 
     // DEPLOY GUARD
-    const factoryData = [
-      abiCoder.encode(["bytes32"], [ethers.utils.formatBytes32String("salt")]),
-    ];
+    vetoImpl = await new VetoGuard__factory(deployer).deploy(); // Veto Impl
+    const vetoGuardFactoryInit =
+      // eslint-disable-next-line camelcase
+      VetoGuard__factory.createInterface().encodeFunctionData(
+        "vetoERC20Voting"
+      );
 
-    const createGuardCalldata = vetoGuardFactory.interface.encodeFunctionData(
-      "create",
-      [owner1.address, factoryData]
+    predictedVetoGuard = await calculateProxyAddress(
+      moduleFactory,
+      vetoImpl.address,
+      vetoGuardFactoryInit,
+      "10031021"
     );
 
+    vetoGuard = await ethers.getContractAt("VetoGuard", predictedVetoGuard);
+
+    const moduleData = ifaceFactory.encodeFunctionData("deployModule", [
+      vetoImpl.address,
+      vetoGuardFactoryInit,
+      "10031021",
+    ]);
+
     // SET GUARD
-    setGuardCalldata = ifaceSafe.encodeFunctionData("setGuard", [
+    const setGuardCalldata = ifaceSafe.encodeFunctionData("setGuard", [
       predictedVetoGuard,
     ]);
 
@@ -138,14 +130,18 @@ describe.only("Gnosis Safe", () => {
     ]);
 
     // TX Array
+    const sigs =
+      "0x000000000000000000000000" +
+      callback.address.slice(2) +
+      "0000000000000000000000000000000000000000000000000000000000000000" +
+      "01";
+
     const txdata = abiCoder.encode(
       ["address[][]", "bytes[][]", "bool[]"],
       [
         [
           [ethers.constants.AddressZero],
-          [
-            vetoGuardFactory.address, // deploy Guard
-          ],
+          [moduleFactory.address],
           [
             ethers.constants.AddressZero, // setGuard Gnosis
             ethers.constants.AddressZero, // remove owner + threshold
@@ -154,7 +150,7 @@ describe.only("Gnosis Safe", () => {
         ],
         [
           [createGnosisCalldata],
-          [createGuardCalldata],
+          [moduleData],
           [setGuardCalldata, removeCalldata, initGuard],
         ],
         [false, false, true],
@@ -180,9 +176,24 @@ describe.only("Gnosis Safe", () => {
     );
   });
 
-  describe("Gnosis Safe with VetoGuard", () => {
-    it("Creates a safe and emits changeGuard event", async () => {
-      // Deploy Gnosis Safe
+  describe("Atomic Gnosis Safe Deployment", () => {
+    it("Setup VetoGuard w/ ModuleProxyCreationEvent", async () => {
+      await expect(
+        gnosisFactory.createProxyWithCallback(
+          gnosisSingletonAddress,
+          bytecode,
+          saltNum,
+          callback.address
+        )
+      )
+        .to.emit(moduleFactory, "ModuleProxyCreation")
+        .withArgs(predictedVetoGuard, vetoImpl.address);
+      expect(await vetoGuard.executionDelayBlocks()).eq(10);
+      expect(await vetoGuard.vetoERC20Voting()).eq(owner1.address);
+      expect(await vetoGuard.gnosisSafe()).eq(gnosisSafe.address);
+    });
+
+    it("Setup Guard w/ changeGuard event", async () => {
       await expect(
         gnosisFactory.createProxyWithCallback(
           gnosisSingletonAddress,
@@ -193,15 +204,9 @@ describe.only("Gnosis Safe", () => {
       )
         .to.emit(gnosisSafe, "ChangedGuard")
         .withArgs(vetoGuard.address);
-
       expect(await vetoGuard.executionDelayBlocks()).eq(10);
       expect(await vetoGuard.vetoERC20Voting()).eq(owner1.address);
       expect(await vetoGuard.gnosisSafe()).eq(gnosisSafe.address);
-      expect(await gnosisSafe.isOwner(owner1.address)).eq(true);
-      expect(await gnosisSafe.isOwner(owner2.address)).eq(true);
-      expect(await gnosisSafe.isOwner(owner3.address)).eq(true);
-      expect(await gnosisSafe.isOwner(callback.address)).eq(false);
-      expect(await gnosisSafe.getThreshold()).eq(threshold);
     });
   });
 });

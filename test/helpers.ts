@@ -67,6 +67,30 @@ export const predictGnosisSafeCallbackAddress = async (
   );
 };
 
+export const calculateProxyAddress = (
+  factory: Contract,
+  masterCopy: string,
+  initData: string,
+  saltNonce: string
+) => {
+  const masterCopyAddress = masterCopy.toLowerCase().replace(/^0x/, "");
+  const byteCode =
+    "0x602d8060093d393df3363d3d373d3d3d363d73" +
+    masterCopyAddress +
+    "5af43d82803e903d91602b57fd5bf3";
+
+  const salt = ethers.utils.solidityKeccak256(
+    ["bytes32", "uint256"],
+    [ethers.utils.solidityKeccak256(["bytes"], [initData]), saltNonce]
+  );
+
+  return ethers.utils.getCreate2Address(
+    factory.address,
+    salt,
+    ethers.utils.keccak256(byteCode)
+  );
+};
+
 export const EIP_DOMAIN = {
   EIP712Domain: [
     { type: "uint256", name: "chainId" },
@@ -133,6 +157,11 @@ export const ifaceSafe = new Interface([
   "function isOwner(address owner) public view returns (bool)",
 ]);
 
+export const ifaceFactory = new Interface([
+  "function deployModule(address masterCopy,bytes memory initializer,uint256 saltNonce) public returns (address proxy)",
+  "event ModuleProxyCreation(address indexed proxy,address indexed masterCopy)",
+]);
+
 export const abi = [
   "event ProxyCreation(address proxy, address singleton)",
   "function createProxy(address singleton, bytes memory data) public returns (address proxy)",
@@ -158,6 +187,11 @@ export const abiSafe = [
   "function getTransactionHash(address to,uint256 value,bytes calldata data,uint8 operation,uint256 safeTxGas,uint256 baseGas,uint256 gasPrice,address gasToken,address refundReceiver,uint256 _nonce) public view returns (bytes32)",
   "function setGuard(address guard) external",
   "function enableModule(address module) public",
+];
+
+export const abiFactory = [
+  "event ModuleProxyCreation(address indexed proxy,address indexed masterCopy)",
+  "function deployModule(address masterCopy,bytes memory initializer,uint256 saltNonce) public returns (address proxy)",
 ];
 
 export const calculateSafeDomainSeparator = (

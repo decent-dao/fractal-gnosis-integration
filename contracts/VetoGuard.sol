@@ -8,7 +8,6 @@ import "./TransactionHasher.sol";
 import "@gnosis.pm/zodiac/contracts/guard/BaseGuard.sol";
 import "@gnosis.pm/zodiac/contracts/factory/FactoryFriendly.sol";
 import "@gnosis.pm/safe-contracts/contracts/common/Enum.sol";
-import "hardhat/console.sol";
 
 /// @notice A guard contract that prevents transactions that have been vetoed from being executed on the Gnosis Safe
 contract VetoGuard is
@@ -29,13 +28,16 @@ contract VetoGuard is
         (
             uint256 _executionDelayBlocks,
             address _owner,
-            address _vetoERC20Voting
-        ) = abi.decode(initializeParams, (uint256, address, address));
+            address _vetoERC20Voting,
+            address _gnosisSafe // Address(0) == msg.sender
+        ) = abi.decode(initializeParams, (uint256, address, address, address));
 
         executionDelayBlocks = _executionDelayBlocks;
         transferOwnership(_owner);
         vetoERC20Voting = IVetoERC20Voting(_vetoERC20Voting);
-        gnosisSafe = IGnosisSafe(msg.sender);
+        gnosisSafe = IGnosisSafe(
+            _gnosisSafe == address(0) ? msg.sender : _gnosisSafe
+        );
 
         emit VetoGuardSetup(
             msg.sender,
@@ -134,8 +136,6 @@ contract VetoGuard is
         bytes memory,
         address
     ) external view override {
-        if (executionDelayBlocks == 0 && address(vetoERC20Voting) == address(0))
-            return;
         bytes32 transactionHash = getTransactionHash(
             to,
             value,

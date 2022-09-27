@@ -5,7 +5,6 @@ import { ethers, network } from "hardhat";
 import { VetoGuard, VetoGuard__factory } from "../typechain-types";
 import { CallbackGnosis } from "../typechain-types/contracts/CallbackGnosis";
 import { CallbackGnosis__factory } from "../typechain-types/factories/contracts/CallbackGnosis__factory";
-import { VetoGuardFactory__factory } from "../typechain-types/factories/contracts/VetoGuardFactory__factory";
 
 import {
   ifaceSafe,
@@ -34,6 +33,7 @@ describe.only("Gnosis Safe", () => {
   let owner2: SignerWithAddress;
   let owner3: SignerWithAddress;
 
+  const abiCoder = new ethers.utils.AbiCoder(); // encode data
   const gnosisFactoryAddress = "0xa6B71E26C5e0845f74c812102Ca7114b6a896AB2";
   const gnosisSingletonAddress = "0xd9Db270c1B5E3Bd161E8c8503c55cEABeE709552";
   const threshold = 2;
@@ -59,8 +59,6 @@ describe.only("Gnosis Safe", () => {
     });
 
     [deployer, owner1, owner2, owner3] = await ethers.getSigners();
-
-    const abiCoder = new ethers.utils.AbiCoder(); // encode data
 
     gnosisFactory = new ethers.Contract(gnosisFactoryAddress, abi, deployer); // Gnosis Factory
     moduleFactory = new ethers.Contract(
@@ -140,8 +138,7 @@ describe.only("Gnosis Safe", () => {
       ["address[][]", "bytes[][]", "bool[]"],
       [
         [
-          [ethers.constants.AddressZero],
-          [moduleFactory.address],
+          [ethers.constants.AddressZero, moduleFactory.address], // SetupGnosis + Deploy Guard
           [
             ethers.constants.AddressZero, // setGuard Gnosis
             ethers.constants.AddressZero, // remove owner + threshold
@@ -149,11 +146,10 @@ describe.only("Gnosis Safe", () => {
           ],
         ],
         [
-          [createGnosisCalldata],
-          [moduleData],
+          [createGnosisCalldata, moduleData],
           [setGuardCalldata, removeCalldata, initGuard],
         ],
-        [false, false, true],
+        [false, true],
       ]
     );
     bytecode = abiCoder.encode(["bytes", "bytes"], [txdata, sigs]);
@@ -216,12 +212,88 @@ describe.only("Gnosis Safe", () => {
         )
       )
         .to.emit(gnosisSafe, "RemovedOwner")
-        .withArgs(vetoGuard.address);
+        .withArgs(callback.address);
       expect(await gnosisSafe.isOwner(owner1.address)).eq(true);
       expect(await gnosisSafe.isOwner(owner2.address)).eq(true);
       expect(await gnosisSafe.isOwner(owner3.address)).eq(true);
       expect(await gnosisSafe.isOwner(callback.address)).eq(false);
       expect(await gnosisSafe.getThreshold()).eq(threshold);
+    });
+
+    it("Tx Fails w/ incorrect txCall", async () => {
+      const badData = ifaceSafe.encodeFunctionData("setup", [
+        [ethers.constants.AddressZero],
+        1,
+        ethers.constants.AddressZero,
+        ethers.constants.HashZero,
+        ethers.constants.AddressZero,
+        ethers.constants.AddressZero,
+        0,
+        ethers.constants.AddressZero,
+      ]);
+      const sigs =
+        "0x000000000000000000000000" +
+        callback.address.slice(2) +
+        "0000000000000000000000000000000000000000000000000000000000000000" +
+        "01";
+
+      const txdata = abiCoder.encode(
+        ["address[][]", "bytes[][]", "bool[]"],
+        [
+          [
+            [ethers.constants.AddressZero], // SetupGnosis + Deploy Guard
+          ],
+          [[badData]],
+          [false, true],
+        ]
+      );
+      bytecode = abiCoder.encode(["bytes", "bytes"], [txdata, sigs]);
+      await expect(
+        gnosisFactory.createProxyWithCallback(
+          gnosisSingletonAddress,
+          bytecode,
+          saltNum,
+          callback.address
+        )
+      ).to.be.revertedWith("CB001");
+    });
+
+    it("Tx Fails w/ incorrect GnosisTxCall", async () => {
+      const badData = ifaceSafe.encodeFunctionData("setup", [
+        [ethers.constants.AddressZero],
+        1,
+        ethers.constants.AddressZero,
+        ethers.constants.HashZero,
+        ethers.constants.AddressZero,
+        ethers.constants.AddressZero,
+        0,
+        ethers.constants.AddressZero,
+      ]);
+      const sigs =
+        "0x000000000000000000000000" +
+        callback.address.slice(2) +
+        "0000000000000000000000000000000000000000000000000000000000000000" +
+        "01";
+
+      const txdata = abiCoder.encode(
+        ["address[][]", "bytes[][]", "bool[]"],
+        [
+          [
+            [ethers.constants.AddressZero], // SetupGnosis + Deploy Guard
+          ],
+          [[badData]],
+          [true],
+        ]
+      );
+      bytecode = abiCoder.encode(["bytes", "bytes"], [txdata, sigs]);
+      await expect(
+        gnosisFactory.createProxyWithCallback(
+          gnosisSingletonAddress,
+          bytecode,
+          saltNum,
+          callback.address
+        )
+      ).to.be.revertedWith("CB000");
     });
   });
 });

@@ -1,8 +1,8 @@
 pragma solidity ^0.8.0;
 import "./interfaces/IProxyCreationCallback.sol";
-import "hardhat/console.sol";
 
-contract CallbackGnosis {
+/// @notice Operated via the GnosisFactory's 
+contract CallbackGnosis is IProxyCreationCallback {
     function proxyCreated(
         address proxy,
         address _singleton,
@@ -24,55 +24,43 @@ contract CallbackGnosis {
             if (gnosisExecTxs[i]) {
                 gnosisExecTx(targets[i], txs[i], proxy, signature);
             } else {
-                for(uint j; j < targets[i].length; j++) {
-                    // could this be a multisend as well?
-                    txCall(targets[i][j], txs[i][j], proxy);
-                }
+                multiTx(targets[i], txs[i], proxy);
             }
         }
     }
 
-    function multiSend(
+    function multiTx(
         address[] memory _targets,
-        bytes[] memory _datas,
+        bytes[] memory _txs,
         address _proxy
     ) public {
         for (uint256 i; i < _targets.length; i++) {
-            (bool success, ) = address(_targets[i] == address(0) ? _proxy : _targets[i])
-                .call(_datas[i]);
-                require(success, "CB001");
+            (bool success, ) = address(_targets[i] == address(0) ? _proxy : _targets[i]).call(_txs[i]);
+            require(success, "CB001");
         }
     }
 
-    function gnosisExecTx(address[] memory targets, bytes[] memory txs, address proxy, bytes memory signature) internal {
-        (bool success, ) = address(proxy).call(
+    function gnosisExecTx(address[] memory _targets, bytes[] memory _txs, address _proxy, bytes memory _signature) internal {
+        (bool success, ) = address(_proxy).call(
+                abi.encodeWithSignature(
+                    "execTransaction(address,uint256,bytes,uint8,uint256,uint256,uint256,address,address,bytes)",
+                    address(this), // multisend address
+                    0,
                     abi.encodeWithSignature(
-                        "execTransaction(address,uint256,bytes,uint8,uint256,uint256,uint256,address,address,bytes)",
-                        address(this), // multisend address
-                        0,
-                        abi.encodeWithSignature(
-                            "multiSend(address[],bytes[],address)",
-                            targets,
-                            txs,
-                            proxy
-                        ), // data
-                        1,
-                        0,
-                        0,
-                        0,
-                        address(0),
-                        payable(0),
-                        signature
-                    )
-                );
-                require(success, "CB000");
-    }
-
-    function txCall(address _target, bytes memory _tx, address proxy) internal {
-                (bool success, ) = address(
-                    _target == address(0) ? proxy : _target
-                ).call(_tx);
-                require(success, "CB002");
-               
+                        "multiTx(address[],bytes[],address)",
+                        _targets,
+                        _txs,
+                        _proxy
+                    ), // data
+                    1,
+                    0,
+                    0,
+                    0,
+                    address(0),
+                    payable(0),
+                    _signature
+                )
+            );
+            require(success, "CB000");
     }
 }

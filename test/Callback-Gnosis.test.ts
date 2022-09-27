@@ -16,7 +16,7 @@ import {
   abiFactory,
 } from "./helpers";
 
-describe.only("Gnosis Safe", () => {
+describe("Gnosis Safe", () => {
   // Factories
   let gnosisFactory: Contract;
 
@@ -44,6 +44,8 @@ describe.only("Gnosis Safe", () => {
   );
 
   beforeEach(async () => {
+    // eslint-disable-next-line @typescript-eslint/no-empty-function
+    setTimeout(function () {}, 100);
     // Fork Goerli to use contracts deployed on Goerli
     await network.provider.request({
       method: "hardhat_reset",

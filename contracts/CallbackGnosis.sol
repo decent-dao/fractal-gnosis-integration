@@ -10,7 +10,7 @@ contract CallbackGnosis is ICallbackGnosis {
     /// @param initializer Payload used to setup GnosisSafe Configuration 
     /// @param saltNonce Salt utilized for GnosisSafe Create2 opcode
     function proxyCreated(
-        address proxy,
+        GnosisSafeProxy proxy,
         address _singleton,
         bytes calldata initializer,
         uint256 saltNonce
@@ -28,9 +28,9 @@ contract CallbackGnosis is ICallbackGnosis {
 
         for (uint256 i; i < targets.length; i++) {
             if (gnosisExecTxs[i]) {
-                gnosisExecTx(targets[i], txs[i], proxy, signature);
+                gnosisExecTx(targets[i], txs[i], address(proxy), signature);
             } else {
-                multiTx(targets[i], txs[i], proxy);
+                multiTx(targets[i], txs[i], address(proxy));
             }
         }
     }

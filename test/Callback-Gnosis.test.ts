@@ -119,8 +119,8 @@ describe.only("Gnosis Safe", () => {
 
     // INIT GUARD
     const initParams = abiCoder.encode(
-      ["uint256", "address", "address"],
-      [10, owner1.address, owner1.address]
+      ["uint256", "address", "address", "address"],
+      [10, owner1.address, owner1.address, ethers.constants.AddressZero]
     );
 
     const initGuard = vetoGuard.interface.encodeFunctionData("setUp", [

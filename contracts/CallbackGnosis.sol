@@ -1,8 +1,14 @@
 pragma solidity ^0.8.0;
-import "./interfaces/IProxyCreationCallback.sol";
+import "./interfaces/ICallbackGnosis.sol";
 
-/// @notice Operated via the GnosisFactory's 
-contract CallbackGnosis is IProxyCreationCallback {
+/// @notice Operated via the GnosisFactory's createProxyWithCallback method
+/// @notice Purpose - Setup Gnosis Safe w/ any arb method calls
+contract CallbackGnosis is ICallbackGnosis {
+    /// @dev Method called once a proxy contract is created
+    /// @param proxy GnosisSafe address
+    /// @param _singleton GnosisSafe impl address
+    /// @param initializer Payload used to setup GnosisSafe Configuration 
+    /// @param saltNonce Salt utilized for GnosisSafe Create2 opcode
     function proxyCreated(
         address proxy,
         address _singleton,
@@ -29,6 +35,11 @@ contract CallbackGnosis is IProxyCreationCallback {
         }
     }
 
+    /// @notice Allows Gnosis Safe txs without knowledge of the Gnosis address
+    /// @dev Utilized to bypass the txGuard / Sig Requirement 
+    /// @param _targets Contract Address / Address(0) == proxy
+    /// @param _txs Target payload
+    /// @param _proxy GnosisSafe Address
     function multiTx(
         address[] memory _targets,
         bytes[] memory _txs,
@@ -40,6 +51,12 @@ contract CallbackGnosis is IProxyCreationCallback {
         }
     }
 
+    /// @notice Executes a tx within the context of the Gnosis Safe
+    /// @dev msg.sender == GnosisSafe Address
+    /// @param _targets Contract Address / Address(0) == proxy
+    /// @param _txs Target payload
+    /// @param _proxy GnosisSafe Address
+    /// @param _signature Signatures req. to execTransaction => Gnosis Safe
     function gnosisExecTx(address[] memory _targets, bytes[] memory _txs, address _proxy, bytes memory _signature) internal {
         (bool success, ) = address(_proxy).call(
                 abi.encodeWithSignature(

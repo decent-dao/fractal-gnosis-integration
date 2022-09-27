@@ -7,14 +7,14 @@ interface IVetoERC20Voting {
     event VetoVoteCast(
         address indexed voter,
         bytes32 indexed transactionHash,
-        uint256 votesCast
+        uint256 votesCast,
+        bool freeze
     );
 
-    /// @notice Allows the msg.sender to cast veto votes on the specified transaction
+    /// @notice Allows the msg.sender to cast veto and freeze votes on the specified transaction
     /// @param _transactionHash The hash of the transaction data
-    function castVetoVote(
-        bytes32 _transactionHash
-    ) external;
+    /// @param _freeze Bool indicating whether the voter thinks the DAO should also be frozen
+    function castVetoVote(bytes32 _transactionHash, bool _freeze) external;
 
     /// @notice Returns whether the specified functions has been vetoed
     /// @param to Destination address.

@@ -10,31 +10,36 @@ import "@openzeppelin/contracts/governance/utils/IVotes.sol";
 
 /// @notice A contract for casting veto votes with an ERC20 votes token
 contract VetoERC20Voting is IVetoERC20Voting, TransactionHasher, Initializable {
+    bool public isFrozen;
     uint256 public vetoVotesThreshold;
+    uint256 public freezeVotesThreshold;
     IVotes public votesToken;
     IVetoGuard public vetoGuard;
     mapping(bytes32 => uint256) public transactionVetoVotes;
+    mapping(bytes32 => uint256) public transactionFreezeVotes;
     mapping(address => mapping(bytes32 => bool)) public userHasVoted;
 
-  /// @notice Initializes the contract that can only be called once
-  /// @param _vetoVotesThreshold The number of votes required to veto a transaction
-  /// @param _votesToken The address of the VotesToken contract
-  /// @param _vetoGuard The address of the VetoGuard contract
+    /// @notice Initializes the contract that can only be called once
+    /// @param _vetoVotesThreshold The number of votes required to veto a transaction
+    /// @param _freezeVotesThreshold The number of votes required to freeze the DAO
+    /// @param _votesToken The address of the VotesToken contract
+    /// @param _vetoGuard The address of the VetoGuard contract
     function initialize(
         uint256 _vetoVotesThreshold,
+        uint256 _freezeVotesThreshold,
         address _votesToken,
         address _vetoGuard
     ) external initializer {
         vetoVotesThreshold = _vetoVotesThreshold;
+        freezeVotesThreshold = _freezeVotesThreshold;
         votesToken = IVotes(_votesToken);
         vetoGuard = IVetoGuard(_vetoGuard);
     }
 
-    /// @notice Allows the msg.sender to cast veto votes on the specified transaction
+    /// @notice Allows the msg.sender to cast veto and freeze votes on the specified transaction
     /// @param _transactionHash The hash of the transaction data
-    function castVetoVote(
-        bytes32 _transactionHash
-    ) external {
+    /// @param _freeze Bool indicating whether the voter thinks the DAO should also be frozen
+    function castVetoVote(bytes32 _transactionHash, bool _freeze) external {
         // Check that user has not yet voted
         require(
             !userHasVoted[msg.sender][_transactionHash],
@@ -57,13 +62,23 @@ contract VetoERC20Voting is IVetoERC20Voting, TransactionHasher, Initializable {
         // Add the user votes to the veto vote count for this transaction
         transactionVetoVotes[_transactionHash] += vetoVotes;
 
+        // If the user is voting to freeze, count that vote as well
+        if (_freeze) {
+            transactionFreezeVotes[_transactionHash] += vetoVotes;
+            // If enough freeze votes have been casted, then freeze the DAO
+            if (
+                !isFrozen &&
+                transactionFreezeVotes[_transactionHash] > freezeVotesThreshold
+            ) isFrozen = true;
+        }
+
         // User has voted
         userHasVoted[msg.sender][_transactionHash] = true;
 
-        emit VetoVoteCast(msg.sender, _transactionHash, vetoVotes);
+        emit VetoVoteCast(msg.sender, _transactionHash, vetoVotes, _freeze);
     }
 
-    /// @notice Returns whether the specified functions has been vetoed
+    /// @notice Returns whether the specified transaction has been vetoed
     /// @param to Destination address.
     /// @param value Ether value.
     /// @param data Data payload.
@@ -86,7 +101,7 @@ contract VetoERC20Voting is IVetoERC20Voting, TransactionHasher, Initializable {
         address payable refundReceiver
     ) external view returns (bool) {
         return
-            transactionVetoVotes[
+            isFrozen || transactionVetoVotes[
                 getTransactionHash(
                     to,
                     value,

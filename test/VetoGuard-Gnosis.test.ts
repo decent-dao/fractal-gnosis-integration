@@ -136,6 +136,7 @@ describe("Gnosis Safe", () => {
     // Initialize VetoERC20Voting contract
     await vetoERC20Voting.initialize(
       1000,
+      1000,
       votesToken.address,
       vetoGuard.address
     );
@@ -399,7 +400,7 @@ describe("Gnosis Safe", () => {
     );
 
     // Vetoer 1 casts 500 veto votes
-    await vetoERC20Voting.connect(tokenVetoer1).castVetoVote(txHash);
+    await vetoERC20Voting.connect(tokenVetoer1).castVetoVote(txHash, false);
 
     // 500 veto votes have been cast
     expect(
@@ -498,10 +499,10 @@ describe("Gnosis Safe", () => {
     );
 
     // Vetoer 1 casts 500 veto votes
-    await vetoERC20Voting.connect(tokenVetoer1).castVetoVote(txHash);
+    await vetoERC20Voting.connect(tokenVetoer1).castVetoVote(txHash, false);
 
     // Vetoer 2 casts 600 veto votes
-    await vetoERC20Voting.connect(tokenVetoer2).castVetoVote(txHash);
+    await vetoERC20Voting.connect(tokenVetoer2).castVetoVote(txHash, false);
 
     // 1100 veto votes have been cast
     expect(
@@ -599,10 +600,10 @@ describe("Gnosis Safe", () => {
     );
 
     // Vetoer 1 casts 500 veto votes
-    await vetoERC20Voting.connect(tokenVetoer1).castVetoVote(txHash);
+    await vetoERC20Voting.connect(tokenVetoer1).castVetoVote(txHash, false);
 
     await expect(
-      vetoERC20Voting.connect(tokenVetoer1).castVetoVote(txHash)
+      vetoERC20Voting.connect(tokenVetoer1).castVetoVote(txHash, false)
     ).to.be.revertedWith("User has already voted");
   });
 
@@ -633,7 +634,7 @@ describe("Gnosis Safe", () => {
     );
 
     await expect(
-      vetoERC20Voting.connect(tokenVetoer1).castVetoVote(txHash)
+      vetoERC20Voting.connect(tokenVetoer1).castVetoVote(txHash, false)
     ).to.be.revertedWith("Transaction has not yet been queued");
   });
 });

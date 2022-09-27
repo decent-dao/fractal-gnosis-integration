@@ -21,7 +21,7 @@ import {
   abiSafe,
 } from "./helpers";
 
-describe.skip("Gnosis Safe", () => {
+describe("Gnosis Safe", () => {
   // Factories
   let gnosisFactory: Contract;
 

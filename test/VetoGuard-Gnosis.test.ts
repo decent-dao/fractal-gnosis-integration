@@ -130,14 +130,7 @@ describe.skip("Gnosis Safe", () => {
     vetoERC20Voting = await new VetoERC20Voting__factory(deployer).deploy();
 
     // Deploy VetoGuard contract with a 10 block delay between queuing and execution
-    vetoGuard = await new VetoGuard__factory(deployer)
-      .deploy
-      // vetoGuardOwner.address,
-      // 10,
-      // vetoERC20Voting.address,
-      // gnosisSafe.address,
-      // ""
-      ();
+    vetoGuard = await new VetoGuard__factory(deployer).deploy();
 
     // Initialize VetoERC20Voting contract
     await vetoERC20Voting.initialize(

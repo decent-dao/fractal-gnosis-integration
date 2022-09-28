@@ -708,7 +708,7 @@ describe("Gnosis Safe", () => {
     expect(await votesToken.balanceOf(gnosisSafe.address)).to.eq(1);
   });
 
-  it.only("A frozen DAO cannot execute any transactions", async () => {
+  it("A frozen DAO cannot execute any transactions", async () => {
     // Create transaction to set the guard address
     const tokenTransferData1 = votesToken.interface.encodeFunctionData(
       "transfer",

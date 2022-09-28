@@ -11,6 +11,15 @@ interface IVetoERC20Voting {
         bool freeze
     );
 
+    event FreezeVoteCast(
+        address indexed voter,
+        uint256 votesCast
+    );
+
+    event FreezeProposalCreated(
+        address indexed creator
+    );
+
     /// @notice Allows the msg.sender to cast veto and freeze votes on the specified transaction
     /// @param _transactionHash The hash of the transaction data
     /// @param _freeze Bool indicating whether the voter thinks the DAO should also be frozen

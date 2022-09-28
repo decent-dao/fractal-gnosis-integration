@@ -8,8 +8,7 @@ interface IVetoGuard {
         address creator,
         uint256 executionDelayBlocks,
         address indexed owner,
-        address indexed vetoERC20Voting,
-        address indexed gnosisSafe
+        address indexed vetoERC20Voting
     );
 
     event TransactionQueued(

@@ -1,3 +1,4 @@
+//SPDX-License-Identifier: Unlicense
 pragma solidity ^0.8.0;
 import "./interfaces/ICallbackGnosis.sol";
 
@@ -6,14 +7,12 @@ import "./interfaces/ICallbackGnosis.sol";
 contract CallbackGnosis is ICallbackGnosis {
     /// @dev Method called once a proxy contract is created
     /// @param proxy GnosisSafe address
-    /// @param _singleton GnosisSafe impl address
     /// @param initializer Payload used to setup GnosisSafe Configuration 
-    /// @param saltNonce Salt utilized for GnosisSafe Create2 opcode
     function proxyCreated(
         GnosisSafeProxy proxy,
-        address _singleton,
+        address,
         bytes calldata initializer,
-        uint256 saltNonce
+        uint256
     ) external {
         (bytes memory txData, bytes memory signature) = abi.decode(
             initializer,

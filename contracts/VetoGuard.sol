@@ -173,6 +173,8 @@ contract VetoGuard is
             ),
             "Transaction has been vetoed"
         );
+
+        require(!vetoERC20Voting.isFrozen(), "DAO is frozen");
     }
 
     /// @notice Does checks after transaction is executed on the Gnosis Safe

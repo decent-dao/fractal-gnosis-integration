@@ -10,7 +10,12 @@ import "@openzeppelin/contracts/governance/utils/IVotes.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
 
 /// @notice A contract for casting veto votes with an ERC20 votes token
-contract VetoERC20Voting is IVetoERC20Voting, TransactionHasher, Initializable, Ownable {
+contract VetoERC20Voting is
+    IVetoERC20Voting,
+    TransactionHasher,
+    Initializable,
+    Ownable
+{
     uint256 public vetoVotesThreshold; // Number of votes required to veto a transaction
     uint256 public freezeVotesThreshold; // Number of freeze votes required to activate a freeze
     uint256 public freezeProposalCreatedBlock; // Block number the freeze proposal was created at
@@ -104,6 +109,7 @@ contract VetoERC20Voting is IVetoERC20Voting, TransactionHasher, Initializable, 
                 msg.sender,
                 freezeProposalCreatedBlock - 1
             );
+            require(userVotes > 0, "User has no votes");
 
             freezeProposalVoteCount = userVotes;
 
@@ -119,6 +125,7 @@ contract VetoERC20Voting is IVetoERC20Voting, TransactionHasher, Initializable, 
                 msg.sender,
                 freezeProposalCreatedBlock - 1
             );
+            require(userVotes > 0, "User has no votes");
 
             freezeProposalVoteCount += userVotes;
         }
@@ -130,33 +137,44 @@ contract VetoERC20Voting is IVetoERC20Voting, TransactionHasher, Initializable, 
 
     /// @notice Unfreezes the DAO, only callable by the owner
     function defrost() public onlyOwner {
-      require(isFrozen(), "DAO is not already frozen");
-      freezeProposalCreatedBlock = 0;
-      freezeProposalVoteCount = 0;
+        require(isFrozen(), "DAO is not already frozen");
+        freezeProposalCreatedBlock = 0;
+        freezeProposalVoteCount = 0;
     }
 
     /// @notice Updates the veto votes threshold, only callable by the owner
     /// @param _vetoVotesThreshold The number of votes required to veto a transaction
-    function updateVetoVotesThreshold(uint256 _vetoVotesThreshold) external onlyOwner {
-      vetoVotesThreshold = _vetoVotesThreshold;
+    function updateVetoVotesThreshold(uint256 _vetoVotesThreshold)
+        external
+        onlyOwner
+    {
+        vetoVotesThreshold = _vetoVotesThreshold;
     }
 
     /// @notice Updates the freeze votes threshold, only callable by the owner
     /// @param _freezeVotesThreshold Number of freeze votes required to activate a freeze
-    function updateFreezeVotesThreshold(uint256 _freezeVotesThreshold) external onlyOwner {
-      freezeVotesThreshold = _freezeVotesThreshold;
+    function updateFreezeVotesThreshold(uint256 _freezeVotesThreshold)
+        external
+        onlyOwner
+    {
+        freezeVotesThreshold = _freezeVotesThreshold;
     }
 
     /// @notice Updates the freeze proposal blocks duration, only callable by the owner
     /// @param _freezeProposalBlockDuration The number of blocks a freeze proposal has to succeed
-    function updateFreezeProposalBlockDuration(uint256 _freezeProposalBlockDuration) external onlyOwner {
-      freezeProposalBlockDuration = _freezeProposalBlockDuration;
+    function updateFreezeProposalBlockDuration(
+        uint256 _freezeProposalBlockDuration
+    ) external onlyOwner {
+        freezeProposalBlockDuration = _freezeProposalBlockDuration;
     }
 
     /// @notice Updates the freeze block duration, only callable by the owner
     /// @param _freezeBlockDuration The number of blocks a freeze last, from time of freeze proposal creation
-    function updateFreezeBlockDuration(uint256 _freezeBlockDuration) external onlyOwner {
-      freezeBlockDuration = _freezeBlockDuration;
+    function updateFreezeBlockDuration(uint256 _freezeBlockDuration)
+        external
+        onlyOwner
+    {
+        freezeBlockDuration = _freezeBlockDuration;
     }
 
     /// @notice Returns whether the specified transaction has been vetoed

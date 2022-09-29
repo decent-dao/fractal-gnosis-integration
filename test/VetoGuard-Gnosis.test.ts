@@ -2,6 +2,7 @@ import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/signers";
 import { expect } from "chai";
 import { BigNumber, Contract } from "ethers";
 import { ethers, network } from "hardhat";
+
 import {
   VotesToken,
   VotesToken__factory,
@@ -958,7 +959,7 @@ describe.only("Gnosis Safe", () => {
       ).to.be.revertedWith("Transaction has been vetoed");
     });
 
-    it("A DAO may be frozen at any time", async () => {
+    it("A DAO may be frozen ind. of a veto ", async () => {
       // Vetoer 1 casts 500 veto votes and 500 freeze votes
       await vetoERC20Voting.connect(tokenVetoer1).castFreezeVote();
       // Vetoer 2 casts 600 veto votes
@@ -1031,19 +1032,104 @@ describe.only("Gnosis Safe", () => {
       expect(await vetoERC20Voting.owner()).to.eq(vetoGuardOwner.address);
     });
 
-    // it.only("Freeze vars set properly during init", async () => {
-    //   // Frozen Params init correctly
-    //   expect(await vetoERC20Voting.freezeVotesThreshold()).to.eq(1090);
-    //   expect(await vetoERC20Voting.freezeProposalBlockDuration()).to.eq(10);
-    //   expect(await vetoERC20Voting.freezeBlockDuration()).to.eq(100);
-    //   expect(await vetoERC20Voting.owner()).to.eq(vetoGuardOwner.address);
+    it("updates state properly due to freeze actions", async () => {
+      expect(await vetoERC20Voting.freezeProposalVoteCount()).to.eq(0);
+      expect(await vetoERC20Voting.freezeProposalCreatedBlock()).to.eq(0);
 
-    //   // expect(await vetoERC20Voting.freezeProposalVoteCount()).to.eq(1090);
-    //   // await vetoERC20Voting.freezeProposalCreatedBlock();
-    //   // // Vetoer 1 casts 500 veto votes and 500 freeze votes
-    //   // await vetoERC20Voting.connect(tokenVetoer1).castFreezeVote();
-    //   // // Vetoer 2 casts 600 veto votes
-    //   // await vetoERC20Voting.connect(tokenVetoer2).castFreezeVote();
-    // });
+      // Vetoer 1 casts 500 veto votes and 500 freeze votes
+      await vetoERC20Voting.connect(tokenVetoer1).castFreezeVote();
+      expect(await vetoERC20Voting.isFrozen()).to.eq(false);
+      expect(await vetoERC20Voting.freezeProposalVoteCount()).to.eq(500);
+      const latestBlock = await ethers.provider.getBlock("latest");
+      expect(await vetoERC20Voting.freezeProposalCreatedBlock()).to.eq(
+        latestBlock.number
+      );
+
+      await vetoERC20Voting.connect(tokenVetoer2).castFreezeVote();
+      expect(await vetoERC20Voting.isFrozen()).to.eq(true);
+    });
+
+    it.only("Prev. Frozen DAOs may execute txs after the frozen period", async () => {
+      // Vetoer 1 casts 500 veto votes and 500 freeze votes
+      await vetoERC20Voting.connect(tokenVetoer1).castFreezeVote();
+      // Vetoer 2 casts 600 veto votes
+      await vetoERC20Voting.connect(tokenVetoer2).castFreezeVote();
+
+      // Check that the DAO has been frozen
+      expect(await vetoERC20Voting.isFrozen()).to.eq(true);
+
+      // Create transaction to set the guard address
+      const tokenTransferData1 = votesToken.interface.encodeFunctionData(
+        "transfer",
+        [deployer.address, 1000]
+      );
+
+      const tx1 = buildSafeTransaction({
+        to: votesToken.address,
+        data: tokenTransferData1,
+        safeTxGas: 1000000,
+        nonce: await gnosisSafe.nonce(),
+      });
+
+      const sigs1 = [
+        await safeSignTypedData(owner1, gnosisSafe, tx1),
+        await safeSignTypedData(owner2, gnosisSafe, tx1),
+      ];
+      const signatureBytes1 = buildSignatureBytes(sigs1);
+
+      await vetoGuard.queueTransaction(
+        tx1.to,
+        tx1.value,
+        tx1.data,
+        tx1.operation,
+        tx1.safeTxGas,
+        tx1.baseGas,
+        tx1.gasPrice,
+        tx1.gasToken,
+        tx1.refundReceiver,
+        signatureBytes1
+      );
+
+      // Mine blocks to surpass the execution delay
+      for (let i = 0; i < 9; i++) {
+        await network.provider.send("evm_mine");
+      }
+
+      await expect(
+        gnosisSafe.execTransaction(
+          tx1.to,
+          tx1.value,
+          tx1.data,
+          tx1.operation,
+          tx1.safeTxGas,
+          tx1.baseGas,
+          tx1.gasPrice,
+          tx1.gasToken,
+          tx1.refundReceiver,
+          signatureBytes1
+        )
+      ).to.be.revertedWith("Transaction has been vetoed");
+
+      for (let i = 0; i < 100; i++) {
+        await network.provider.send("evm_mine");
+      }
+
+      // Check that the DAO has been unFrozen
+      expect(await vetoERC20Voting.isFrozen()).to.eq(false);
+      await expect(
+        gnosisSafe.execTransaction(
+          tx1.to,
+          tx1.value,
+          tx1.data,
+          tx1.operation,
+          tx1.safeTxGas,
+          tx1.baseGas,
+          tx1.gasPrice,
+          tx1.gasToken,
+          tx1.refundReceiver,
+          signatureBytes1
+        )
+      ).to.emit(gnosisSafe, "ExecutionSuccess");
+    });
   });
 });

@@ -200,7 +200,6 @@ contract VetoERC20Voting is
         address payable refundReceiver
     ) external view returns (bool) {
         return
-            isFrozen() ||
             transactionVetoVotes[
                 getTransactionHash(
                     to,
@@ -213,8 +212,7 @@ contract VetoERC20Voting is
                     gasToken,
                     refundReceiver
                 )
-            ] >
-            vetoVotesThreshold;
+            ] > vetoVotesThreshold;
     }
 
     /// @notice Returns the number of votes that have been cast to veto the specified transaction

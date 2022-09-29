@@ -1024,6 +1024,66 @@ describe.only("Gnosis Safe", () => {
       ).to.be.revertedWith("Transaction has been vetoed");
     });
 
+    it.only("A DAO may execute txs during a the freeze proposal period if the freeze threshold is not met", async () => {
+      // Vetoer 1 casts 500 veto votes and 500 freeze votes
+      await vetoERC20Voting.connect(tokenVetoer1).castFreezeVote();
+
+      // Check that the DAO has been frozen
+      expect(await vetoERC20Voting.isFrozen()).to.eq(false);
+
+      // Create transaction to set the guard address
+      const tokenTransferData1 = votesToken.interface.encodeFunctionData(
+        "transfer",
+        [deployer.address, 1000]
+      );
+
+      const tx1 = buildSafeTransaction({
+        to: votesToken.address,
+        data: tokenTransferData1,
+        safeTxGas: 1000000,
+        nonce: await gnosisSafe.nonce(),
+      });
+
+      const sigs1 = [
+        await safeSignTypedData(owner1, gnosisSafe, tx1),
+        await safeSignTypedData(owner2, gnosisSafe, tx1),
+      ];
+      const signatureBytes1 = buildSignatureBytes(sigs1);
+
+      await vetoGuard.queueTransaction(
+        tx1.to,
+        tx1.value,
+        tx1.data,
+        tx1.operation,
+        tx1.safeTxGas,
+        tx1.baseGas,
+        tx1.gasPrice,
+        tx1.gasToken,
+        tx1.refundReceiver,
+        signatureBytes1
+      );
+
+      // Mine blocks to surpass the execution delay
+      for (let i = 0; i < 9; i++) {
+        await network.provider.send("evm_mine");
+      }
+
+      await expect(
+        gnosisSafe.execTransaction(
+          tx1.to,
+          tx1.value,
+          tx1.data,
+          tx1.operation,
+          tx1.safeTxGas,
+          tx1.baseGas,
+          tx1.gasPrice,
+          tx1.gasToken,
+          tx1.refundReceiver,
+          signatureBytes1
+        )
+      ).to.emit(gnosisSafe, "ExecutionSuccess");
+    });
+
     it("Freeze vars set properly during init", async () => {
       // Frozen Params init correctly
       expect(await vetoERC20Voting.freezeVotesThreshold()).to.eq(1090);
@@ -1049,7 +1109,7 @@ describe.only("Gnosis Safe", () => {
       expect(await vetoERC20Voting.isFrozen()).to.eq(true);
     });
 
-    it.only("Casting a vote after the freeze voting period resets state", async () => {
+    it("Casting a vote after the freeze voting period resets state", async () => {
       expect(await vetoERC20Voting.freezeProposalVoteCount()).to.eq(0);
       expect(await vetoERC20Voting.freezeProposalCreatedBlock()).to.eq(0);
 
@@ -1075,7 +1135,7 @@ describe.only("Gnosis Safe", () => {
       expect(await vetoERC20Voting.isFrozen()).to.eq(false);
     });
 
-    it.only("A user cannot vote twice to freeze a dao during a voting period", async () => {
+    it("A user cannot vote twice to freeze a dao during a voting period", async () => {
       await vetoERC20Voting.connect(tokenVetoer1).castFreezeVote();
       await expect(
         vetoERC20Voting.connect(tokenVetoer1).castFreezeVote()

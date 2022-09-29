@@ -1049,7 +1049,41 @@ describe.only("Gnosis Safe", () => {
       expect(await vetoERC20Voting.isFrozen()).to.eq(true);
     });
 
-    it.only("Prev. Frozen DAOs may execute txs after the frozen period", async () => {
+    it.only("Casting a vote after the freeze voting period resets state", async () => {
+      expect(await vetoERC20Voting.freezeProposalVoteCount()).to.eq(0);
+      expect(await vetoERC20Voting.freezeProposalCreatedBlock()).to.eq(0);
+
+      // Vetoer 1 casts 500 veto votes and 500 freeze votes
+      await vetoERC20Voting.connect(tokenVetoer1).castFreezeVote();
+      expect(await vetoERC20Voting.isFrozen()).to.eq(false);
+      expect(await vetoERC20Voting.freezeProposalVoteCount()).to.eq(500);
+      let latestBlock = await ethers.provider.getBlock("latest");
+      expect(await vetoERC20Voting.freezeProposalCreatedBlock()).to.eq(
+        latestBlock.number
+      );
+
+      for (let i = 0; i < 10; i++) {
+        await network.provider.send("evm_mine");
+      }
+
+      await vetoERC20Voting.connect(tokenVetoer1).castFreezeVote();
+      expect(await vetoERC20Voting.freezeProposalVoteCount()).to.eq(500);
+      latestBlock = await ethers.provider.getBlock("latest");
+      expect(await vetoERC20Voting.freezeProposalCreatedBlock()).to.eq(
+        latestBlock.number
+      );
+      expect(await vetoERC20Voting.isFrozen()).to.eq(false);
+    });
+
+    it.only("A user cannot vote twice to freeze a dao during a voting period", async () => {
+      await vetoERC20Voting.connect(tokenVetoer1).castFreezeVote();
+      await expect(
+        vetoERC20Voting.connect(tokenVetoer1).castFreezeVote()
+      ).to.be.revertedWith("User has already voted");
+      expect(await vetoERC20Voting.freezeProposalVoteCount()).to.eq(500);
+    });
+
+    it("Prev. Frozen DAOs may execute txs after the frozen period", async () => {
       // Vetoer 1 casts 500 veto votes and 500 freeze votes
       await vetoERC20Voting.connect(tokenVetoer1).castFreezeVote();
       // Vetoer 2 casts 600 veto votes

@@ -11,19 +11,18 @@ interface IVetoERC20Voting {
         bool freeze
     );
 
-    event FreezeVoteCast(
-        address indexed voter,
-        uint256 votesCast
-    );
+    event FreezeVoteCast(address indexed voter, uint256 votesCast);
 
-    event FreezeProposalCreated(
-        address indexed creator
-    );
+    event FreezeProposalCreated(address indexed creator);
 
     /// @notice Allows the msg.sender to cast veto and freeze votes on the specified transaction
     /// @param _transactionHash The hash of the transaction data
     /// @param _freeze Bool indicating whether the voter thinks the DAO should also be frozen
     function castVetoVote(bytes32 _transactionHash, bool _freeze) external;
+
+    /// @notice Allows a user to cast a freeze vote if there is an active freeze proposal
+    /// @notice If there isn't an active freeze proposal, it is created and the user's votes are cast
+    function castFreezeVote() external;
 
     /// @notice Returns whether the specified functions has been vetoed
     /// @param to Destination address.
@@ -47,4 +46,8 @@ interface IVetoERC20Voting {
         address gasToken,
         address payable refundReceiver
     ) external view returns (bool);
+
+    /// @notice Returns true if the DAO is currently frozen
+    /// @return bool Indicates whether the DAO is currently frozen
+    function isFrozen() external view returns (bool);
 }

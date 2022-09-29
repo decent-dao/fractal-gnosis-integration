@@ -811,11 +811,6 @@ describe.only("Gnosis Safe", () => {
         [deployer.address, 999]
       );
 
-      const tokenTransferData3 = votesToken.interface.encodeFunctionData(
-        "transfer",
-        [deployer.address, 998]
-      );
-
       const tx1 = buildSafeTransaction({
         to: votesToken.address,
         data: tokenTransferData1,
@@ -826,13 +821,6 @@ describe.only("Gnosis Safe", () => {
       const tx2 = buildSafeTransaction({
         to: votesToken.address,
         data: tokenTransferData2,
-        safeTxGas: 1000000,
-        nonce: await gnosisSafe.nonce(),
-      });
-
-      const tx3 = buildSafeTransaction({
-        to: votesToken.address,
-        data: tokenTransferData3,
         safeTxGas: 1000000,
         nonce: await gnosisSafe.nonce(),
       });
@@ -969,5 +957,93 @@ describe.only("Gnosis Safe", () => {
         )
       ).to.be.revertedWith("Transaction has been vetoed");
     });
+
+    it("A DAO may be frozen at any time", async () => {
+      // Vetoer 1 casts 500 veto votes and 500 freeze votes
+      await vetoERC20Voting.connect(tokenVetoer1).castFreezeVote();
+      // Vetoer 2 casts 600 veto votes
+      await vetoERC20Voting.connect(tokenVetoer2).castFreezeVote();
+
+      // 1100 freeze votes have been cast
+      expect(await vetoERC20Voting.freezeProposalVoteCount()).to.eq(1100);
+
+      // Check that the DAO has been frozen
+      expect(await vetoERC20Voting.isFrozen()).to.eq(true);
+
+      // Create transaction to set the guard address
+      const tokenTransferData1 = votesToken.interface.encodeFunctionData(
+        "transfer",
+        [deployer.address, 1000]
+      );
+
+      const tx1 = buildSafeTransaction({
+        to: votesToken.address,
+        data: tokenTransferData1,
+        safeTxGas: 1000000,
+        nonce: await gnosisSafe.nonce(),
+      });
+
+      const sigs1 = [
+        await safeSignTypedData(owner1, gnosisSafe, tx1),
+        await safeSignTypedData(owner2, gnosisSafe, tx1),
+      ];
+      const signatureBytes1 = buildSignatureBytes(sigs1);
+
+      await vetoGuard.queueTransaction(
+        tx1.to,
+        tx1.value,
+        tx1.data,
+        tx1.operation,
+        tx1.safeTxGas,
+        tx1.baseGas,
+        tx1.gasPrice,
+        tx1.gasToken,
+        tx1.refundReceiver,
+        signatureBytes1
+      );
+
+      // Mine blocks to surpass the execution delay
+      for (let i = 0; i < 9; i++) {
+        await network.provider.send("evm_mine");
+      }
+
+      await expect(
+        gnosisSafe.execTransaction(
+          tx1.to,
+          tx1.value,
+          tx1.data,
+          tx1.operation,
+          tx1.safeTxGas,
+          tx1.baseGas,
+          tx1.gasPrice,
+          tx1.gasToken,
+          tx1.refundReceiver,
+          signatureBytes1
+        )
+      ).to.be.revertedWith("Transaction has been vetoed");
+    });
+
+    it("Freeze vars set properly during init", async () => {
+      // Frozen Params init correctly
+      expect(await vetoERC20Voting.freezeVotesThreshold()).to.eq(1090);
+      expect(await vetoERC20Voting.freezeProposalBlockDuration()).to.eq(10);
+      expect(await vetoERC20Voting.freezeBlockDuration()).to.eq(100);
+      expect(await vetoERC20Voting.owner()).to.eq(vetoGuardOwner.address);
+    });
+
+    // it.only("Freeze vars set properly during init", async () => {
+    //   // Frozen Params init correctly
+    //   expect(await vetoERC20Voting.freezeVotesThreshold()).to.eq(1090);
+    //   expect(await vetoERC20Voting.freezeProposalBlockDuration()).to.eq(10);
+    //   expect(await vetoERC20Voting.freezeBlockDuration()).to.eq(100);
+    //   expect(await vetoERC20Voting.owner()).to.eq(vetoGuardOwner.address);
+
+    //   // expect(await vetoERC20Voting.freezeProposalVoteCount()).to.eq(1090);
+    //   // await vetoERC20Voting.freezeProposalCreatedBlock();
+    //   // // Vetoer 1 casts 500 veto votes and 500 freeze votes
+    //   // await vetoERC20Voting.connect(tokenVetoer1).castFreezeVote();
+    //   // // Vetoer 2 casts 600 veto votes
+    //   // await vetoERC20Voting.connect(tokenVetoer2).castFreezeVote();
+    // });
   });
 });

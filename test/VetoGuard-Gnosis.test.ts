@@ -956,7 +956,7 @@ describe.only("Gnosis Safe", () => {
           tx2.refundReceiver,
           signatureBytes2
         )
-      ).to.be.revertedWith("Transaction has been vetoed");
+      ).to.be.revertedWith("DAO is frozen");
     });
 
     it("A DAO may be frozen ind. of a veto ", async () => {
@@ -1021,7 +1021,7 @@ describe.only("Gnosis Safe", () => {
           tx1.refundReceiver,
           signatureBytes1
         )
-      ).to.be.revertedWith("Transaction has been vetoed");
+      ).to.be.revertedWith("DAO is frozen");
     });
 
     it("A DAO may execute txs during a the freeze proposal period if the freeze threshold is not met", async () => {
@@ -1135,7 +1135,7 @@ describe.only("Gnosis Safe", () => {
       expect(await vetoERC20Voting.isFrozen()).to.eq(false);
     });
 
-    it("A user cannot vote twice to freeze a dao during a voting period", async () => {
+    it("A user cannot vote twice to freeze a dao during the same voting period", async () => {
       await vetoERC20Voting.connect(tokenVetoer1).castFreezeVote();
       await expect(
         vetoERC20Voting.connect(tokenVetoer1).castFreezeVote()
@@ -1202,7 +1202,7 @@ describe.only("Gnosis Safe", () => {
           tx1.refundReceiver,
           signatureBytes1
         )
-      ).to.be.revertedWith("Transaction has been vetoed");
+      ).to.be.revertedWith("DAO is frozen");
 
       for (let i = 0; i < 100; i++) {
         await network.provider.send("evm_mine");
@@ -1291,7 +1291,11 @@ describe.only("Gnosis Safe", () => {
       ).to.emit(gnosisSafe, "ExecutionSuccess");
     });
 
-    it.only("You must have voting weight to cast a freeze vote", async () => {
+    it("You must have voting weight to cast a freeze vote", async () => {
+      await expect(
+        vetoERC20Voting.connect(vetoGuardOwner).castFreezeVote()
+      ).to.be.revertedWith("User has no votes");
+      vetoERC20Voting.connect(tokenVetoer1).castFreezeVote();
       await expect(
         vetoERC20Voting.connect(vetoGuardOwner).castFreezeVote()
       ).to.be.revertedWith("User has no votes");

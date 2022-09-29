@@ -1143,7 +1143,7 @@ describe.only("Gnosis Safe", () => {
       expect(await vetoERC20Voting.freezeProposalVoteCount()).to.eq(500);
     });
 
-    it("Defrosted DAOs may execute txs", async () => {
+    it("Prev. Frozen DAOs may execute txs after the frozen period", async () => {
       // Vetoer 1 casts 500 veto votes and 500 freeze votes
       await vetoERC20Voting.connect(tokenVetoer1).castFreezeVote();
       // Vetoer 2 casts 600 veto votes
@@ -1226,7 +1226,7 @@ describe.only("Gnosis Safe", () => {
       ).to.emit(gnosisSafe, "ExecutionSuccess");
     });
 
-    it.only("Prev. Frozen DAOs may execute txs after the frozen period", async () => {
+    it("Defrosted DAOs may execute txs", async () => {
       // Vetoer 1 casts 500 veto votes and 500 freeze votes
       await vetoERC20Voting.connect(tokenVetoer1).castFreezeVote();
       // Vetoer 2 casts 600 veto votes
@@ -1289,6 +1289,32 @@ describe.only("Gnosis Safe", () => {
           signatureBytes1
         )
       ).to.emit(gnosisSafe, "ExecutionSuccess");
+    });
+
+    it.only("You must have voting weight to cast a freeze vote", async () => {
+      await expect(
+        vetoERC20Voting.connect(vetoGuardOwner).castFreezeVote()
+      ).to.be.revertedWith("User has no votes");
+    });
+
+    it("Only owner methods must be called by vetoGuard owner", async () => {
+      await expect(
+        vetoERC20Voting.connect(tokenVetoer1).defrost()
+      ).to.be.revertedWith("Ownable: caller is not the owner");
+      await expect(
+        vetoERC20Voting.connect(tokenVetoer1).updateVetoVotesThreshold(0)
+      ).to.be.revertedWith("Ownable: caller is not the owner");
+      await expect(
+        vetoERC20Voting.connect(tokenVetoer1).updateFreezeVotesThreshold(0)
+      ).to.be.revertedWith("Ownable: caller is not the owner");
+      await expect(
+        vetoERC20Voting
+          .connect(tokenVetoer1)
+          .updateFreezeProposalBlockDuration(0)
+      ).to.be.revertedWith("Ownable: caller is not the owner");
+      await expect(
+        vetoERC20Voting.connect(tokenVetoer1).updateFreezeBlockDuration(0)
+      ).to.be.revertedWith("Ownable: caller is not the owner");
     });
   });
 });

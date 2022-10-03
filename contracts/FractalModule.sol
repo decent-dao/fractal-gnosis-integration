@@ -4,7 +4,7 @@ import "@gnosis.pm/zodiac/contracts/core/Module.sol";
 import "@gnosis.pm/safe-contracts/contracts/common/Enum.sol";
 
 contract FractalModule is Module {
-    mapping(address => bool) controllers; // A DAO may authorize users to act on the behalf of the parent DAO.
+    mapping(address => bool) public controllers; // A DAO may authorize users to act on the behalf of the parent DAO.
     event ControllersAdded(address[] controllers);
     event ControllersRemoved(address[] controllers);
 

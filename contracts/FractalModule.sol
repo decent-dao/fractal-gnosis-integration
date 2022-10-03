@@ -22,9 +22,7 @@ contract FractalModule is Module {
         setAvatar(_avatar);
         setTarget(_target);
         transferOwnership(_owner);
-        for (uint256 i; i < _controllers.length; i++) {
-            controllers[_controllers[i]] = true;
-        }
+        addControllers(_controllers);
     }
 
     function addControllers(address[] memory _controllers) public onlyOwner {

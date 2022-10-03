@@ -5,6 +5,8 @@ import "@gnosis.pm/safe-contracts/contracts/common/Enum.sol";
 
 contract FractalModule is Module {
     mapping(address => bool) controllers; // A DAO may authorize users to act on the behalf of the parent DAO.
+    event ControllersAdded(address[] controllers);
+    event ControllersRemoved(address[] controllers);
 
     /**
      * @dev Throws if called by any account other than the owner.
@@ -55,6 +57,7 @@ contract FractalModule is Module {
         for (uint256 i; i < _controllers.length; i++) {
             controllers[_controllers[i]] = true;
         }
+        emit ControllersAdded(_controllers);
     }
 
     function removeControllers(address[] memory _controllers)
@@ -64,5 +67,6 @@ contract FractalModule is Module {
         for (uint256 i; i < _controllers.length; i++) {
             controllers[_controllers[i]] = false;
         }
+        emit ControllersRemoved(_controllers);
     }
 }

@@ -27,9 +27,15 @@ contract FractalModule is Module {
         }
     }
 
-    function addController(address[] memory _controllers) public onlyOwner {
+    function addControllers(address[] memory _controllers) public onlyOwner {
         for (uint256 i; i < _controllers.length; i++) {
             controllers[_controllers[i]] = true;
+        }
+    }
+
+    function removeControllers(address[] memory _controllers) public onlyOwner {
+        for (uint256 i; i < _controllers.length; i++) {
+            controllers[_controllers[i]] = false;
         }
     }
 

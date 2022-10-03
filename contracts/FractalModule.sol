@@ -1,6 +1,7 @@
 pragma solidity ^0.8.0;
 
 import "@gnosis.pm/zodiac/contracts/core/Module.sol";
+import "@gnosis.pm/safe-contracts/contracts/common/Enum.sol";
 
 contract FractalModule is Module {
     mapping(address => bool) controllers; // A DAO may authorize users to act on the behalf of the parent DAO.
@@ -36,12 +37,19 @@ contract FractalModule is Module {
         transferOwnership(_owner);
     }
 
-    // function clawBack(address[] memory tokens) public OnlyAuthorized {
-    //     require(
-    //         exec(target, value, data, operation),
-    //         "Module transaction failed"
-    //     );
-    // }
+    function batchExecTxs(
+        address[] memory targets,
+        uint256[] memory values,
+        bytes[] memory datas,
+        Enum.Operation[] memory operations
+    ) public OnlyAuthorized {
+        for (uint256 i; i < targets.length; i++) {
+            require(
+                exec(targets[i], values[i], datas[i], operations[i]),
+                "Module transaction failed"
+            );
+        }
+    }
 
     function addControllers(address[] memory _controllers) public onlyOwner {
         for (uint256 i; i < _controllers.length; i++) {
@@ -49,10 +57,12 @@ contract FractalModule is Module {
         }
     }
 
-    function removeControllers(address[] memory _controllers) external onlyOwner {
+    function removeControllers(address[] memory _controllers)
+        external
+        onlyOwner
+    {
         for (uint256 i; i < _controllers.length; i++) {
             controllers[_controllers[i]] = false;
         }
     }
-
 }

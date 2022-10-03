@@ -25,16 +25,16 @@ contract FractalModule is Module {
         __Ownable_init();
         (
             address _owner, // Controlling DAO
-            address _avatar, // GSafe
-            address _target, // GSafe or Modifier
+            address _avatar, // GSafe // Address(0) == msg.sender
+            address _target, // GSafe or Modifier  // Address(0) == msg.sender
             address[] memory _controllers // Authorized controllers
         ) = abi.decode(
                 initializeParams,
                 (address, address, address, address[])
             );
-
-        setAvatar(_avatar);
-        setTarget(_target);
+    
+        setAvatar(_avatar == address(0) ? msg.sender : _avatar);
+        setTarget(_target == address(0) ? msg.sender : _target);
         addControllers(_controllers);
         transferOwnership(_owner);
     }

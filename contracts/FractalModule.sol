@@ -5,6 +5,17 @@ import "@gnosis.pm/zodiac/contracts/core/Module.sol";
 contract FractalModule is Module {
     mapping(address => bool) controllers; // A DAO may authorize users to act on the behalf of the parent DAO.
 
+    /**
+     * @dev Throws if called by any account other than the owner.
+     */
+    modifier OnlyAuthorized() {
+        require(
+            owner() == msg.sender || controllers[msg.sender],
+            "Not Authorized"
+        );
+        _;
+    }
+
     /// @dev Initialize function
     /// @param initializeParams Parameters of initialization encoded
     function setUp(bytes memory initializeParams) public override initializer {
@@ -21,9 +32,16 @@ contract FractalModule is Module {
 
         setAvatar(_avatar);
         setTarget(_target);
-        transferOwnership(_owner);
         addControllers(_controllers);
+        transferOwnership(_owner);
     }
+
+    // function clawBack(address[] memory tokens) public OnlyAuthorized {
+    //     require(
+    //         exec(target, value, data, operation),
+    //         "Module transaction failed"
+    //     );
+    // }
 
     function addControllers(address[] memory _controllers) public onlyOwner {
         for (uint256 i; i < _controllers.length; i++) {
@@ -31,16 +49,10 @@ contract FractalModule is Module {
         }
     }
 
-    function removeControllers(address[] memory _controllers) public onlyOwner {
+    function removeControllers(address[] memory _controllers) external onlyOwner {
         for (uint256 i; i < _controllers.length; i++) {
             controllers[_controllers[i]] = false;
         }
     }
 
-    // function clawBack(address[] memory tokens) public {
-    //     require(
-    //         exec(target, value, data, operation),
-    //         "Module transaction failed"
-    //     );
-    // }
 }

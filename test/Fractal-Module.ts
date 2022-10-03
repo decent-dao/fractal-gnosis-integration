@@ -111,7 +111,7 @@ describe("Fractal-Module", () => {
     );
 
     const moduleData = ifaceFactory.encodeFunctionData("deployModule", [
-      vetoImpl.address,
+      moduleImpl.address,
       fractalModuleInit,
       "10031021",
     ]);
@@ -131,21 +131,16 @@ describe("Fractal-Module", () => {
         ),
       ]);
 
+    // ADD Module To Safe
+    const enableModuleCalldata = ifaceSafe.encodeFunctionData("enableModule", [
+      fractalModule.address,
+    ]);
+
     // REMOVE OWNER
     const removeCalldata = ifaceSafe.encodeFunctionData("removeOwner", [
       owner3.address,
       callback.address,
       threshold,
-    ]);
-
-    // INIT GUARD
-    const initParams = abiCoder.encode(
-      ["uint256", "address", "address", "address"],
-      [10, owner1.address, owner1.address, ethers.constants.AddressZero]
-    );
-
-    const initGuard = vetoGuard.interface.encodeFunctionData("setUp", [
-      initParams,
     ]);
 
     // TX Array
@@ -161,14 +156,14 @@ describe("Fractal-Module", () => {
         [
           [ethers.constants.AddressZero, moduleFactory.address], // SetupGnosis + Deploy Guard
           [
-            ethers.constants.AddressZero, // setGuard Gnosis
+            ethers.constants.AddressZero, // setup Module
+            ethers.constants.AddressZero, // enable Module GS
             ethers.constants.AddressZero, // remove owner + threshold
-            vetoGuard.address, // setup Guard
           ],
         ],
         [
           [createGnosisCalldata, moduleData],
-          [setGuardCalldata, removeCalldata, initGuard],
+          [setModuleCalldata, enableModuleCalldata, removeCalldata],
         ],
         [false, true],
       ]

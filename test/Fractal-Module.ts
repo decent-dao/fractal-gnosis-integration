@@ -80,7 +80,19 @@ describe("Fractal-Module", () => {
 
     callback = await new CallbackGnosis__factory(deployer).deploy(); // Gnosis Callback
 
-    // DEPLOY GUARD
+    // Setup GNOSIS
+    const createGnosisCalldata = ifaceSafe.encodeFunctionData("setup", [
+      [owner1.address, owner2.address, owner3.address, callback.address],
+      1,
+      ethers.constants.AddressZero,
+      ethers.constants.HashZero,
+      ethers.constants.AddressZero,
+      ethers.constants.AddressZero,
+      0,
+      ethers.constants.AddressZero,
+    ]);
+
+    // DEPLOY Module
     moduleImpl = await new FractalModule__factory(deployer).deploy();
     const fractalModuleInit =
       // eslint-disable-next-line camelcase
@@ -104,22 +116,20 @@ describe("Fractal-Module", () => {
       "10031021",
     ]);
 
-    // SET GUARD
-    // const setGuardCalldata = ifaceSafe.encodeFunctionData("setGuard", [
-    //   predictedVetoGuard,
-    // ]);
-
-    // Setup GNOSIS
-    const createGnosisCalldata = ifaceSafe.encodeFunctionData("setup", [
-      [owner1.address, owner2.address, owner3.address, callback.address],
-      1,
-      ethers.constants.AddressZero,
-      ethers.constants.HashZero,
-      ethers.constants.AddressZero,
-      ethers.constants.AddressZero,
-      0,
-      ethers.constants.AddressZero,
-    ]);
+    // SETUP Module
+    const setModuleCalldata =
+      // eslint-disable-next-line camelcase
+      FractalModule__factory.createInterface().encodeFunctionData("setUp", [
+        abiCoder.encode(
+          ["address", "address", "address", "address[]"],
+          [
+            owner1.address,
+            ethers.constants.AddressZero,
+            ethers.constants.AddressZero,
+            [owner2.address],
+          ]
+        ),
+      ]);
 
     // REMOVE OWNER
     const removeCalldata = ifaceSafe.encodeFunctionData("removeOwner", [

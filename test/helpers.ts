@@ -179,6 +179,8 @@ export const abiSafe = [
   "event RemovedOwner(address owner)",
   "event SafeSetup(address indexed initiator, address[] owners, uint256 threshold, address initializer, address fallbackHandler)",
   "event EnabledModule(address module)",
+  "event ExecutionFromModuleSuccess(address indexed module)",
+  "event ExecutionFromModuleFailure(address indexed module)",
   "function getOwners() public view returns (address[] memory)",
   "function nonce() public view returns (uint256)",
   "function isOwner(address owner) public view returns (bool)",

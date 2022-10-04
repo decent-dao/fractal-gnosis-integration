@@ -1,3 +1,4 @@
+//SPDX-License-Identifier: Unlicense
 pragma solidity ^0.8.0;
 
 import "@gnosis.pm/zodiac/contracts/core/Module.sol";
@@ -41,20 +42,15 @@ contract FractalModule is Module {
 
     function batchExecTxs(bytes memory execTxData) public OnlyAuthorized {
         (
-            address[] memory targets,
-            uint256[] memory values,
-            bytes[] memory datas,
-            Enum.Operation[] memory operations
-        ) = abi.decode(
-                execTxData,
-                (address[], uint256[], bytes[], Enum.Operation[])
-            );
-        for (uint256 i; i < targets.length; i++) {
-            require(
-                exec(targets[i], values[i], datas[i], operations[i]),
-                "Module transaction failed"
-            );
-        }
+            address target,
+            uint256 value,
+            bytes memory data,
+            Enum.Operation operation
+        ) = abi.decode(execTxData, (address, uint256, bytes, Enum.Operation));
+        require(
+            exec(target, value, data, operation),
+            "Module transaction failed"
+        );
     }
 
     function addControllers(address[] memory _controllers) public onlyOwner {
@@ -73,4 +69,15 @@ contract FractalModule is Module {
         }
         emit ControllersRemoved(_controllers);
     }
+
+    // function supportsInterface(bytes4 interfaceId)
+    //     external
+    //     pure
+    //     override
+    //     returns (bool)
+    // {
+    //     return
+    //         interfaceId == type(IGuard).interfaceId || // 0xe6d7a83a
+    //         interfaceId == type(IERC165).interfaceId; // 0x01ffc9a7
+    // }
 }

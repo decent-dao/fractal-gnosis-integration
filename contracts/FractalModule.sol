@@ -32,19 +32,23 @@ contract FractalModule is Module {
                 initializeParams,
                 (address, address, address, address[])
             );
-    
+
         setAvatar(_avatar == address(0) ? msg.sender : _avatar);
         setTarget(_target == address(0) ? msg.sender : _target);
         addControllers(_controllers);
         transferOwnership(_owner);
     }
 
-    function batchExecTxs(
-        address[] memory targets,
-        uint256[] memory values,
-        bytes[] memory datas,
-        Enum.Operation[] memory operations
-    ) public OnlyAuthorized {
+    function batchExecTxs(bytes memory execTxData) public OnlyAuthorized {
+        (
+            address[] memory targets,
+            uint256[] memory values,
+            bytes[] memory datas,
+            Enum.Operation[] memory operations
+        ) = abi.decode(
+                execTxData,
+                (address[], uint256[], bytes[], Enum.Operation[])
+            );
         for (uint256 i; i < targets.length; i++) {
             require(
                 exec(targets[i], values[i], datas[i], operations[i]),

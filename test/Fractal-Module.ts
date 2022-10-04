@@ -17,7 +17,7 @@ import {
   abiFactory,
 } from "./helpers";
 
-describe("Fractal-Module", () => {
+describe("Fractal-Module Integration", () => {
   // Factories
   let gnosisFactory: Contract;
 
@@ -186,7 +186,7 @@ describe("Fractal-Module", () => {
     );
   });
 
-  describe("Fractal Module Testing", () => {
+  describe("Fractal Module", () => {
     it("Setup Fractal Module w/ ModuleProxyCreationEvent", async () => {
       await expect(
         gnosisFactory.createProxyWithCallback(
@@ -270,36 +270,33 @@ describe("Fractal-Module", () => {
           owner1.address,
           500,
         ]);
+      const txData =
+        // eslint-disable-next-line camelcase
+        abiCoder.encode(
+          ["address[]", "uint256[]", "bytes[]", "uint8[]"],
+          [[votesToken.address], [0], [clawBackCalldata], [0]]
+        );
 
       // REVERT => NOT AUTHORIZED
-      await expect(
-        fractalModule.batchExecTxs(
-          [votesToken.address],
-          [0],
-          [clawBackCalldata],
-          [0]
-        )
-      ).to.be.revertedWith("Not Authorized");
+      await expect(fractalModule.batchExecTxs(txData)).to.be.revertedWith(
+        "Not Authorized"
+      );
 
       // OWNER MAY EXECUTE
-      await expect(
-        fractalModule
-          .connect(owner1)
-          .batchExecTxs([votesToken.address], [0], [clawBackCalldata], [0])
-      ).to.emit(gnosisSafe, "ExecutionFromModuleSuccess");
+      await expect(fractalModule.connect(owner1).batchExecTxs(txData)).to.emit(
+        gnosisSafe,
+        "ExecutionFromModuleSuccess"
+      );
 
       // Controller MAY EXECUTE
-      await expect(
-        fractalModule
-          .connect(owner2)
-          .batchExecTxs([votesToken.address], [0], [clawBackCalldata], [0])
-      ).to.emit(gnosisSafe, "ExecutionFromModuleSuccess");
+      await expect(fractalModule.connect(owner2).batchExecTxs(txData)).to.emit(
+        gnosisSafe,
+        "ExecutionFromModuleSuccess"
+      );
 
       // REVERT => Execution Failure
       await expect(
-        fractalModule
-          .connect(owner1)
-          .batchExecTxs([votesToken.address], [0], [clawBackCalldata], [0])
+        fractalModule.connect(owner1).batchExecTxs(txData)
       ).to.be.revertedWith("Module transaction failed");
 
       expect(await votesToken.balanceOf(gnosisSafe.address)).to.eq(0);

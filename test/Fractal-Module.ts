@@ -207,7 +207,7 @@ describe("Fractal-Module", () => {
       expect(await fractalModule.controllers(owner3.address)).eq(false);
     });
 
-    it.only("Setup Module w/ enabledModule event", async () => {
+    it("Setup Module w/ enabledModule event", async () => {
       await expect(
         gnosisFactory.createProxyWithCallback(
           gnosisSingletonAddress,
@@ -218,6 +218,34 @@ describe("Fractal-Module", () => {
       )
         .to.emit(gnosisSafe, "EnabledModule")
         .withArgs(fractalModule.address);
+    });
+
+    it.only("Owner may add/remove controllers", async () => {
+      await gnosisFactory.createProxyWithCallback(
+        gnosisSingletonAddress,
+        bytecode,
+        saltNum,
+        callback.address
+      );
+      // ADD Controller
+      await expect(
+        fractalModule.connect(owner3).addControllers([owner3.address])
+      ).to.revertedWith("Ownable: caller is not the owner");
+      expect(await fractalModule.controllers(owner3.address)).eq(false);
+      await expect(
+        fractalModule.connect(owner1).addControllers([owner3.address])
+      ).to.emit(fractalModule, "ControllersAdded");
+      expect(await fractalModule.controllers(owner3.address)).eq(true);
+
+      // REMOVE Controller
+      await expect(
+        fractalModule.connect(owner3).removeControllers([owner3.address])
+      ).to.revertedWith("Ownable: caller is not the owner");
+      expect(await fractalModule.controllers(owner3.address)).eq(true);
+      await expect(
+        fractalModule.connect(owner1).removeControllers([owner3.address])
+      ).to.emit(fractalModule, "ControllersRemoved");
+      expect(await fractalModule.controllers(owner3.address)).eq(false);
     });
   });
 });

@@ -207,35 +207,17 @@ describe("Fractal-Module", () => {
       expect(await fractalModule.controllers(owner3.address)).eq(false);
     });
 
-    // it("Setup Guard w/ changeGuard event", async () => {
-    //   await expect(
-    //     gnosisFactory.createProxyWithCallback(
-    //       gnosisSingletonAddress,
-    //       bytecode,
-    //       saltNum,
-    //       callback.address
-    //     )
-    //   )
-    //     .to.emit(gnosisSafe, "ChangedGuard")
-    //     .withArgs(vetoGuard.address);
-    // });
-
-    // it("Setup Gnosis Safe w/ removedOwner event", async () => {
-    //   await expect(
-    //     gnosisFactory.createProxyWithCallback(
-    //       gnosisSingletonAddress,
-    //       bytecode,
-    //       saltNum,
-    //       callback.address
-    //     )
-    //   )
-    //     .to.emit(gnosisSafe, "RemovedOwner")
-    //     .withArgs(callback.address);
-    //   expect(await gnosisSafe.isOwner(owner1.address)).eq(true);
-    //   expect(await gnosisSafe.isOwner(owner2.address)).eq(true);
-    //   expect(await gnosisSafe.isOwner(owner3.address)).eq(true);
-    //   expect(await gnosisSafe.isOwner(callback.address)).eq(false);
-    //   expect(await gnosisSafe.getThreshold()).eq(threshold);
-    // });
+    it.only("Setup Module w/ enabledModule event", async () => {
+      await expect(
+        gnosisFactory.createProxyWithCallback(
+          gnosisSingletonAddress,
+          bytecode,
+          saltNum,
+          callback.address
+        )
+      )
+        .to.emit(gnosisSafe, "EnabledModule")
+        .withArgs(fractalModule.address);
+    });
   });
 });

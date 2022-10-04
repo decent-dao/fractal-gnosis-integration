@@ -2,12 +2,7 @@ import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/signers";
 import { expect } from "chai";
 import { BigNumber, Contract } from "ethers";
 import { ethers, network } from "hardhat";
-import {
-  FractalModule,
-  VetoGuard,
-  VetoGuard__factory,
-  VotesToken__factory,
-} from "../typechain-types";
+import { FractalModule, VotesToken__factory } from "../typechain-types";
 import { CallbackGnosis } from "../typechain-types/contracts/CallbackGnosis";
 import { CallbackGnosis__factory } from "../typechain-types/factories/contracts/CallbackGnosis__factory";
 import { FractalModule__factory } from "../typechain-types/factories/contracts/FractalModule__factory";
@@ -31,9 +26,6 @@ describe("Fractal-Module", () => {
   let moduleFactory: Contract;
   let moduleImpl: FractalModule;
   let fractalModule: FractalModule;
-
-  let vetoGuard: VetoGuard;
-  let vetoImpl: VetoGuard;
   let callback: CallbackGnosis;
 
   // Wallets
@@ -42,12 +34,17 @@ describe("Fractal-Module", () => {
   let owner2: SignerWithAddress;
   let owner3: SignerWithAddress;
 
+  // Predicted Contracts
   let predictedFractalModule: string;
-  const abiCoder = new ethers.utils.AbiCoder(); // encode data
+
+  // Encode Data
+  const abiCoder = new ethers.utils.AbiCoder();
+
+  // Reused Vars
+  let bytecode: string;
   const gnosisFactoryAddress = "0xa6B71E26C5e0845f74c812102Ca7114b6a896AB2";
   const gnosisSingletonAddress = "0xd9Db270c1B5E3Bd161E8c8503c55cEABeE709552";
   const threshold = 2;
-  let bytecode: string;
   const saltNum = BigNumber.from(
     "0x856d90216588f9ffc124d1480a440e1c012c7a816952bc968d737bae5d4e139c"
   );
@@ -189,7 +186,7 @@ describe("Fractal-Module", () => {
     );
   });
 
-  describe.only("Fractal Module Testing", () => {
+  describe("Fractal Module Testing", () => {
     it("Setup Fractal Module w/ ModuleProxyCreationEvent", async () => {
       await expect(
         gnosisFactory.createProxyWithCallback(

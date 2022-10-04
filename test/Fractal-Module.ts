@@ -6,6 +6,7 @@ import {
   FractalModule,
   VetoGuard,
   VetoGuard__factory,
+  VotesToken__factory,
 } from "../typechain-types";
 import { CallbackGnosis } from "../typechain-types/contracts/CallbackGnosis";
 import { CallbackGnosis__factory } from "../typechain-types/factories/contracts/CallbackGnosis__factory";
@@ -220,7 +221,7 @@ describe("Fractal-Module", () => {
         .withArgs(fractalModule.address);
     });
 
-    it.only("Owner may add/remove controllers", async () => {
+    it("Owner may add/remove controllers", async () => {
       await gnosisFactory.createProxyWithCallback(
         gnosisSingletonAddress,
         bytecode,
@@ -246,6 +247,66 @@ describe("Fractal-Module", () => {
         fractalModule.connect(owner1).removeControllers([owner3.address])
       ).to.emit(fractalModule, "ControllersRemoved");
       expect(await fractalModule.controllers(owner3.address)).eq(false);
+    });
+
+    it("Authorized users may exec txs => GS", async () => {
+      await gnosisFactory.createProxyWithCallback(
+        gnosisSingletonAddress,
+        bytecode,
+        saltNum,
+        callback.address
+      );
+      // FUND SAFE
+      const votesToken = await new VotesToken__factory(deployer).deploy(
+        "DCNT",
+        "DCNT",
+        [gnosisSafe.address],
+        [1000]
+      );
+      expect(await votesToken.balanceOf(gnosisSafe.address)).to.eq(1000);
+      expect(await votesToken.balanceOf(owner1.address)).to.eq(0);
+
+      // CLAWBACK FUNDS
+      const clawBackCalldata =
+        // eslint-disable-next-line camelcase
+        VotesToken__factory.createInterface().encodeFunctionData("transfer", [
+          owner1.address,
+          500,
+        ]);
+
+      // REVERT => NOT AUTHORIZED
+      await expect(
+        fractalModule.batchExecTxs(
+          [votesToken.address],
+          [0],
+          [clawBackCalldata],
+          [0]
+        )
+      ).to.be.revertedWith("Not Authorized");
+
+      // OWNER MAY EXECUTE
+      await expect(
+        fractalModule
+          .connect(owner1)
+          .batchExecTxs([votesToken.address], [0], [clawBackCalldata], [0])
+      ).to.emit(gnosisSafe, "ExecutionFromModuleSuccess");
+
+      // Controller MAY EXECUTE
+      await expect(
+        fractalModule
+          .connect(owner2)
+          .batchExecTxs([votesToken.address], [0], [clawBackCalldata], [0])
+      ).to.emit(gnosisSafe, "ExecutionFromModuleSuccess");
+
+      // REVERT => Execution Failure
+      await expect(
+        fractalModule
+          .connect(owner1)
+          .batchExecTxs([votesToken.address], [0], [clawBackCalldata], [0])
+      ).to.be.revertedWith("Module transaction failed");
+
+      expect(await votesToken.balanceOf(gnosisSafe.address)).to.eq(0);
+      expect(await votesToken.balanceOf(owner1.address)).to.eq(1000);
     });
   });
 });

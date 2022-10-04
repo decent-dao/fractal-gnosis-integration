@@ -156,7 +156,7 @@ describe("Fractal-Module", () => {
         [
           [ethers.constants.AddressZero, moduleFactory.address], // SetupGnosis + Deploy Guard
           [
-            ethers.constants.AddressZero, // setup Module
+            fractalModule.address, // setup Module
             ethers.constants.AddressZero, // enable Module GS
             ethers.constants.AddressZero, // remove owner + threshold
           ],
@@ -188,8 +188,8 @@ describe("Fractal-Module", () => {
     );
   });
 
-  describe("Fractal Module Testing", () => {
-    it("Setup VetoGuard w/ ModuleProxyCreationEvent", async () => {
+  describe.only("Fractal Module Testing", () => {
+    it("Setup Fractal Module w/ ModuleProxyCreationEvent", async () => {
       await expect(
         gnosisFactory.createProxyWithCallback(
           gnosisSingletonAddress,
@@ -199,117 +199,43 @@ describe("Fractal-Module", () => {
         )
       )
         .to.emit(moduleFactory, "ModuleProxyCreation")
-        .withArgs(predictedVetoGuard, vetoImpl.address);
-      expect(await vetoGuard.executionDelayBlocks()).eq(10);
-      expect(await vetoGuard.vetoERC20Voting()).eq(owner1.address);
-      expect(await vetoGuard.gnosisSafe()).eq(gnosisSafe.address);
+        .withArgs(predictedFractalModule, moduleImpl.address);
+      expect(await fractalModule.owner()).eq(owner1.address);
+      expect(await fractalModule.target()).eq(gnosisSafe.address);
+      expect(await fractalModule.avatar()).eq(gnosisSafe.address);
+      expect(await fractalModule.controllers(owner2.address)).eq(true);
+      expect(await fractalModule.controllers(owner3.address)).eq(false);
     });
 
-    it("Setup Guard w/ changeGuard event", async () => {
-      await expect(
-        gnosisFactory.createProxyWithCallback(
-          gnosisSingletonAddress,
-          bytecode,
-          saltNum,
-          callback.address
-        )
-      )
-        .to.emit(gnosisSafe, "ChangedGuard")
-        .withArgs(vetoGuard.address);
-    });
+    // it("Setup Guard w/ changeGuard event", async () => {
+    //   await expect(
+    //     gnosisFactory.createProxyWithCallback(
+    //       gnosisSingletonAddress,
+    //       bytecode,
+    //       saltNum,
+    //       callback.address
+    //     )
+    //   )
+    //     .to.emit(gnosisSafe, "ChangedGuard")
+    //     .withArgs(vetoGuard.address);
+    // });
 
-    it("Setup Gnosis Safe w/ removedOwner event", async () => {
-      await expect(
-        gnosisFactory.createProxyWithCallback(
-          gnosisSingletonAddress,
-          bytecode,
-          saltNum,
-          callback.address
-        )
-      )
-        .to.emit(gnosisSafe, "RemovedOwner")
-        .withArgs(callback.address);
-      expect(await gnosisSafe.isOwner(owner1.address)).eq(true);
-      expect(await gnosisSafe.isOwner(owner2.address)).eq(true);
-      expect(await gnosisSafe.isOwner(owner3.address)).eq(true);
-      expect(await gnosisSafe.isOwner(callback.address)).eq(false);
-      expect(await gnosisSafe.getThreshold()).eq(threshold);
-    });
-
-    it("Tx Fails w/ incorrect txCall", async () => {
-      const badData = ifaceSafe.encodeFunctionData("setup", [
-        [ethers.constants.AddressZero],
-        1,
-        ethers.constants.AddressZero,
-        ethers.constants.HashZero,
-        ethers.constants.AddressZero,
-        ethers.constants.AddressZero,
-        0,
-        ethers.constants.AddressZero,
-      ]);
-      const sigs =
-        "0x000000000000000000000000" +
-        callback.address.slice(2) +
-        "0000000000000000000000000000000000000000000000000000000000000000" +
-        "01";
-
-      const txdata = abiCoder.encode(
-        ["address[][]", "bytes[][]", "bool[]"],
-        [
-          [
-            [ethers.constants.AddressZero], // SetupGnosis + Deploy Guard
-          ],
-          [[badData]],
-          [false, true],
-        ]
-      );
-      bytecode = abiCoder.encode(["bytes", "bytes"], [txdata, sigs]);
-      await expect(
-        gnosisFactory.createProxyWithCallback(
-          gnosisSingletonAddress,
-          bytecode,
-          saltNum,
-          callback.address
-        )
-      ).to.be.revertedWith("CB001");
-    });
-
-    it("Tx Fails w/ incorrect GnosisTxCall", async () => {
-      const badData = ifaceSafe.encodeFunctionData("setup", [
-        [ethers.constants.AddressZero],
-        1,
-        ethers.constants.AddressZero,
-        ethers.constants.HashZero,
-        ethers.constants.AddressZero,
-        ethers.constants.AddressZero,
-        0,
-        ethers.constants.AddressZero,
-      ]);
-      const sigs =
-        "0x000000000000000000000000" +
-        callback.address.slice(2) +
-        "0000000000000000000000000000000000000000000000000000000000000000" +
-        "01";
-
-      const txdata = abiCoder.encode(
-        ["address[][]", "bytes[][]", "bool[]"],
-        [
-          [
-            [ethers.constants.AddressZero], // SetupGnosis + Deploy Guard
-          ],
-          [[badData]],
-          [true],
-        ]
-      );
-      bytecode = abiCoder.encode(["bytes", "bytes"], [txdata, sigs]);
-      await expect(
-        gnosisFactory.createProxyWithCallback(
-          gnosisSingletonAddress,
-          bytecode,
-          saltNum,
-          callback.address
-        )
-      ).to.be.revertedWith("CB000");
-    });
+    // it("Setup Gnosis Safe w/ removedOwner event", async () => {
+    //   await expect(
+    //     gnosisFactory.createProxyWithCallback(
+    //       gnosisSingletonAddress,
+    //       bytecode,
+    //       saltNum,
+    //       callback.address
+    //     )
+    //   )
+    //     .to.emit(gnosisSafe, "RemovedOwner")
+    //     .withArgs(callback.address);
+    //   expect(await gnosisSafe.isOwner(owner1.address)).eq(true);
+    //   expect(await gnosisSafe.isOwner(owner2.address)).eq(true);
+    //   expect(await gnosisSafe.isOwner(owner3.address)).eq(true);
+    //   expect(await gnosisSafe.isOwner(callback.address)).eq(false);
+    //   expect(await gnosisSafe.getThreshold()).eq(threshold);
+    // });
   });
 });

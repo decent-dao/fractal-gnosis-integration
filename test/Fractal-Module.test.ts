@@ -2,10 +2,15 @@ import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/signers";
 import { expect } from "chai";
 import { BigNumber, Contract } from "ethers";
 import { ethers, network } from "hardhat";
-import { FractalModule, VotesToken__factory } from "../typechain-types";
+import {
+  FractalModule,
+  IFractalModule__factory,
+  VotesToken__factory,
+} from "../typechain-types";
 import { CallbackGnosis } from "../typechain-types/contracts/CallbackGnosis";
 import { CallbackGnosis__factory } from "../typechain-types/factories/contracts/CallbackGnosis__factory";
 import { FractalModule__factory } from "../typechain-types/factories/contracts/FractalModule__factory";
+import getInterfaceSelector from "./getInterfaceSelector";
 
 import {
   ifaceSafe,
@@ -205,6 +210,22 @@ describe("Fractal-Module Integration", () => {
       expect(await fractalModule.controllers(owner3.address)).eq(false);
     });
 
+    it("Supports the expected ERC165 interface", async () => {
+      await gnosisFactory.createProxyWithCallback(
+        gnosisSingletonAddress,
+        bytecode,
+        saltNum,
+        callback.address
+      );
+      // Supports Fractal Module
+      expect(
+        await fractalModule.supportsInterface(
+          // eslint-disable-next-line camelcase
+          getInterfaceSelector(IFractalModule__factory.createInterface())
+        )
+      ).to.eq(true);
+    });
+
     it("Setup Module w/ enabledModule event", async () => {
       await expect(
         gnosisFactory.createProxyWithCallback(
@@ -246,7 +267,7 @@ describe("Fractal-Module Integration", () => {
       expect(await fractalModule.controllers(owner3.address)).eq(false);
     });
 
-    it.only("Authorized users may exec txs => GS", async () => {
+    it("Authorized users may exec txs => GS", async () => {
       await gnosisFactory.createProxyWithCallback(
         gnosisSingletonAddress,
         bytecode,

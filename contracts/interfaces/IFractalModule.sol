@@ -10,7 +10,7 @@ interface IFractalModule {
 
     /// @notice Allows an authorized user to exec a Gnosis Safe tx via the module
     /// @param execTxData Data payload of module transaction.
-    function batchExecTxs(bytes memory execTxData) external;
+    function execTx(bytes memory execTxData) external;
 
     /// @notice Allows the module owner to add users which may exectxs
     /// @param _controllers Addresses added to the contoller list

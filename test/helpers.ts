@@ -181,7 +181,7 @@ export const abiSafe = [
   "function nonce() public view returns (uint256)",
   "function isOwner(address owner) public view returns (bool)",
   "function getThreshold() public view returns (uint256)",
-  "function getGuard() internal view returns (address guard)",
+  "function getGuard() view returns (address guard)",
   "function setup(address[] calldata _owners,uint256 _threshold,address to,bytes calldata data,address fallbackHandler,address paymentToken,uint256 payment,address payable paymentReceiver)",
   "function execTransaction(address to,uint256 value,bytes calldata data,uint8 operation,uint256 safeTxGas,uint256 baseGas,uint256 gasPrice,address gasToken,address payable refundReceiver,bytes memory signatures) public payable returns (bool success)",
   "function getTransactionHash(address to,uint256 value,bytes calldata data,uint8 operation,uint256 safeTxGas,uint256 baseGas,uint256 gasPrice,address gasToken,address refundReceiver,uint256 _nonce) public view returns (bytes32)",

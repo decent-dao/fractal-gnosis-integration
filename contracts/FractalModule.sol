@@ -56,8 +56,12 @@ contract FractalModule is IFractalModule, Module {
     /// @notice Allows the module owner to add users which may exectxs
     /// @param _controllers Addresses added to the contoller list
     function addControllers(address[] memory _controllers) public onlyOwner {
-        for (uint256 i; i < _controllers.length; i++) {
+        uint256 controllersLength = _controllers.length;
+        for (uint256 i; i < controllersLength; ) {
             controllers[_controllers[i]] = true;
+            unchecked {
+                i++;
+            }
         }
         emit ControllersAdded(_controllers);
     }
@@ -68,8 +72,12 @@ contract FractalModule is IFractalModule, Module {
         external
         onlyOwner
     {
-        for (uint256 i; i < _controllers.length; i++) {
+        uint256 controllersLength = _controllers.length;
+        for (uint256 i; i < controllersLength; ) {
             controllers[_controllers[i]] = false;
+            unchecked {
+                i++;
+            }
         }
         emit ControllersRemoved(_controllers);
     }

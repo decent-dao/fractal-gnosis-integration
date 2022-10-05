@@ -7,9 +7,7 @@ import "./interfaces/IFractalModule.sol";
 contract FractalModule is IFractalModule, Module {
     mapping(address => bool) public controllers; // A DAO may authorize users to act on the behalf of the parent DAO.
 
-    /**
-     * @dev Throws if called by any account other than the owner.
-     */
+    /// @dev Throws if called by any account other than the owner.
     modifier onlyAuthorized() {
         require(
             owner() == msg.sender || controllers[msg.sender],

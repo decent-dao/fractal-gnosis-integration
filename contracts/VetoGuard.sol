@@ -5,7 +5,7 @@ import "./interfaces/IVetoGuard.sol";
 import "./interfaces/IVetoERC20Voting.sol";
 import "./interfaces/IGnosisSafe.sol";
 import "./TransactionHasher.sol";
-import "@gnosis.pm/zodiac/contracts/guard/BaseGuard.sol";
+import "./FractalBaseGuard.sol";
 import "@gnosis.pm/zodiac/contracts/factory/FactoryFriendly.sol";
 import "@gnosis.pm/safe-contracts/contracts/common/Enum.sol";
 
@@ -13,7 +13,7 @@ import "@gnosis.pm/safe-contracts/contracts/common/Enum.sol";
 contract VetoGuard is
     TransactionHasher,
     FactoryFriendly,
-    BaseGuard,
+    FractalBaseGuard,
     IVetoGuard
 {
     uint256 public executionDelayBlocks;
@@ -195,5 +195,21 @@ contract VetoGuard is
         returns (uint256)
     {
         return transactionQueuedBlock[_transactionHash];
+    }
+
+
+    /// @notice Can be used to check if this contract supports the specified interface
+    /// @param interfaceId The bytes representing the interfaceId being checked
+    /// @return bool True if this contract supports the checked interface
+    function supportsInterface(bytes4 interfaceId)
+        public
+        view
+        virtual
+        override (FractalBaseGuard)
+        returns (bool)
+    {
+        return
+            interfaceId == type(IVetoGuard).interfaceId ||
+            super.supportsInterface(interfaceId);
     }
 }

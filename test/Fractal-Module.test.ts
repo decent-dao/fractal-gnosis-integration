@@ -297,25 +297,25 @@ describe("Fractal-Module Integration", () => {
         );
 
       // REVERT => NOT AUTHORIZED
-      await expect(fractalModule.batchExecTxs(txData)).to.be.revertedWith(
+      await expect(fractalModule.execTx(txData)).to.be.revertedWith(
         "Not Authorized"
       );
 
       // OWNER MAY EXECUTE
-      await expect(fractalModule.connect(owner1).batchExecTxs(txData)).to.emit(
+      await expect(fractalModule.connect(owner1).execTx(txData)).to.emit(
         gnosisSafe,
         "ExecutionFromModuleSuccess"
       );
 
       // Controller MAY EXECUTE
-      await expect(fractalModule.connect(owner2).batchExecTxs(txData)).to.emit(
+      await expect(fractalModule.connect(owner2).execTx(txData)).to.emit(
         gnosisSafe,
         "ExecutionFromModuleSuccess"
       );
 
       // REVERT => Execution Failure
       await expect(
-        fractalModule.connect(owner1).batchExecTxs(txData)
+        fractalModule.connect(owner1).execTx(txData)
       ).to.be.revertedWith("Module transaction failed");
 
       expect(await votesToken.balanceOf(gnosisSafe.address)).to.eq(0);

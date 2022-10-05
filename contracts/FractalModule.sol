@@ -38,7 +38,7 @@ contract FractalModule is IFractalModule, Module {
 
     /// @notice Allows an authorized user to exec a Gnosis Safe tx via the module
     /// @param execTxData Data payload of module transaction.
-    function batchExecTxs(bytes memory execTxData) public onlyAuthorized {
+    function execTx(bytes memory execTxData) public onlyAuthorized {
         (
             address _target,
             uint256 _value,

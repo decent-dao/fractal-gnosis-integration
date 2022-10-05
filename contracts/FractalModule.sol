@@ -2,12 +2,10 @@
 pragma solidity ^0.8.0;
 
 import "@gnosis.pm/zodiac/contracts/core/Module.sol";
-import "@gnosis.pm/safe-contracts/contracts/common/Enum.sol";
+import "./interfaces/IFractalModule.sol";
 
-contract FractalModule is Module {
+contract FractalModule is IFractalModule, Module {
     mapping(address => bool) public controllers; // A DAO may authorize users to act on the behalf of the parent DAO.
-    event ControllersAdded(address[] controllers);
-    event ControllersRemoved(address[] controllers);
 
     /**
      * @dev Throws if called by any account other than the owner.
@@ -40,19 +38,23 @@ contract FractalModule is Module {
         transferOwnership(_owner);
     }
 
+    /// @notice Allows an authorized user to exec a Gnosis Safe tx via the module
+    /// @param execTxData Data payload of module transaction.
     function batchExecTxs(bytes memory execTxData) public onlyAuthorized {
         (
-            address target,
-            uint256 value,
-            bytes memory data,
-            Enum.Operation operation
+            address _target,
+            uint256 _value,
+            bytes memory _data,
+            Enum.Operation _operation
         ) = abi.decode(execTxData, (address, uint256, bytes, Enum.Operation));
         require(
-            exec(target, value, data, operation),
+            exec(_target, _value, _data, _operation),
             "Module transaction failed"
         );
     }
 
+    /// @notice Allows the module owner to add users which may exectxs
+    /// @param _controllers Addresses added to the contoller list
     function addControllers(address[] memory _controllers) public onlyOwner {
         for (uint256 i; i < _controllers.length; i++) {
             controllers[_controllers[i]] = true;
@@ -60,6 +62,8 @@ contract FractalModule is Module {
         emit ControllersAdded(_controllers);
     }
 
+    /// @notice Allows the module owner to remove users which may exectxs
+    /// @param _controllers Addresses removed to the contoller list
     function removeControllers(address[] memory _controllers)
         external
         onlyOwner
@@ -68,5 +72,15 @@ contract FractalModule is Module {
             controllers[_controllers[i]] = false;
         }
         emit ControllersRemoved(_controllers);
+    }
+
+    function supportsInterface(bytes4 interfaceId)
+        external
+        pure
+        returns (bool)
+    {
+        return
+            interfaceId == type(IFractalModule).interfaceId || // 0xe6d7a83a
+            interfaceId == type(IERC165).interfaceId; // 0x01ffc9a7
     }
 }

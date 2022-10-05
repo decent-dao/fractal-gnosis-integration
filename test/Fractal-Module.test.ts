@@ -55,8 +55,6 @@ describe("Fractal-Module Integration", () => {
   );
 
   beforeEach(async () => {
-    // eslint-disable-next-line @typescript-eslint/no-empty-function
-    setTimeout(function () {}, 100);
     // Fork Goerli to use contracts deployed on Goerli
     await network.provider.request({
       method: "hardhat_reset",

@@ -12,7 +12,7 @@ contract FractalModule is Module {
     /**
      * @dev Throws if called by any account other than the owner.
      */
-    modifier OnlyAuthorized() {
+    modifier onlyAuthorized() {
         require(
             owner() == msg.sender || controllers[msg.sender],
             "Not Authorized"
@@ -40,7 +40,7 @@ contract FractalModule is Module {
         transferOwnership(_owner);
     }
 
-    function batchExecTxs(bytes memory execTxData) public OnlyAuthorized {
+    function batchExecTxs(bytes memory execTxData) public onlyAuthorized {
         (
             address target,
             uint256 value,
@@ -69,15 +69,4 @@ contract FractalModule is Module {
         }
         emit ControllersRemoved(_controllers);
     }
-
-    // function supportsInterface(bytes4 interfaceId)
-    //     external
-    //     pure
-    //     override
-    //     returns (bool)
-    // {
-    //     return
-    //         interfaceId == type(IGuard).interfaceId || // 0xe6d7a83a
-    //         interfaceId == type(IERC165).interfaceId; // 0x01ffc9a7
-    // }
 }

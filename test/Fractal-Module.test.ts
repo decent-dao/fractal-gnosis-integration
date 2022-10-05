@@ -246,7 +246,7 @@ describe("Fractal-Module Integration", () => {
       expect(await fractalModule.controllers(owner3.address)).eq(false);
     });
 
-    it("Authorized users may exec txs => GS", async () => {
+    it.only("Authorized users may exec txs => GS", async () => {
       await gnosisFactory.createProxyWithCallback(
         gnosisSingletonAddress,
         bytecode,
@@ -273,8 +273,8 @@ describe("Fractal-Module Integration", () => {
       const txData =
         // eslint-disable-next-line camelcase
         abiCoder.encode(
-          ["address[]", "uint256[]", "bytes[]", "uint8[]"],
-          [[votesToken.address], [0], [clawBackCalldata], [0]]
+          ["address", "uint256", "bytes", "uint8"],
+          [votesToken.address, 0, clawBackCalldata, 0]
         );
 
       // REVERT => NOT AUTHORIZED

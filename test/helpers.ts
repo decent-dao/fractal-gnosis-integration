@@ -155,6 +155,7 @@ export const ifaceSafe = new Interface([
   "function changeThreshold(uint256 _threshold) external",
   "function removeOwner(address prevOwner,address owner,uint256 _threshold) external",
   "function isOwner(address owner) public view returns (bool)",
+  "function enableModule(address module) public",
 ]);
 
 export const ifaceFactory = new Interface([
@@ -177,6 +178,9 @@ export const abiSafe = [
   "event ChangedGuard(address guard)",
   "event RemovedOwner(address owner)",
   "event SafeSetup(address indexed initiator, address[] owners, uint256 threshold, address initializer, address fallbackHandler)",
+  "event EnabledModule(address module)",
+  "event ExecutionFromModuleSuccess(address indexed module)",
+  "event ExecutionFromModuleFailure(address indexed module)",
   "function getOwners() public view returns (address[] memory)",
   "function nonce() public view returns (uint256)",
   "function isOwner(address owner) public view returns (bool)",

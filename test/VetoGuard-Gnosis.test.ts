@@ -186,6 +186,20 @@ describe("Gnosis Safe", () => {
   });
 
   describe("VetoGuard Functionality", () => {
+    it("Supports ERC-165", async () => {
+      // Supports IVetoGuard interface
+      expect(await vetoGuard.supportsInterface("0x4877b8b2")).to.eq(true);
+
+      // Supports IGuard interface
+      expect(await vetoGuard.supportsInterface("0xe6d7a83a")).to.eq(true);
+
+      // Supports IERC-165 interface
+      expect(await vetoGuard.supportsInterface("0x01ffc9a7")).to.eq(true);
+
+      // Doesn't support random interface
+      expect(await vetoGuard.supportsInterface("0x00000000")).to.eq(false);
+    });
+
     it("A transaction can be queued and executed", async () => {
       // Create transaction to set the guard address
       const tokenTransferData = votesToken.interface.encodeFunctionData(

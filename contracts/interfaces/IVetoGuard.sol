@@ -4,13 +4,6 @@ pragma solidity ^0.8.0;
 import "@gnosis.pm/safe-contracts/contracts/common/Enum.sol";
 
 interface IVetoGuard {
-    enum TransactionState {
-        pending,
-        queued,
-        readyToExecute,
-        vetoed
-    }
-
     event VetoGuardSetup(
         address creator,
         uint256 executionDelayBlocks,

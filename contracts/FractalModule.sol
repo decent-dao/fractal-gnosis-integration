@@ -58,7 +58,7 @@ contract FractalModule is IFractalModule, Module {
         for (uint256 i; i < controllersLength; ) {
             controllers[_controllers[i]] = true;
             unchecked {
-                i++;
+                ++i;
             }
         }
         emit ControllersAdded(_controllers);
@@ -74,7 +74,7 @@ contract FractalModule is IFractalModule, Module {
         for (uint256 i; i < controllersLength; ) {
             controllers[_controllers[i]] = false;
             unchecked {
-                i++;
+                ++i;
             }
         }
         emit ControllersRemoved(_controllers);
